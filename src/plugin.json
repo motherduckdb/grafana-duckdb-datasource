@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "Duckdb-Datasource",
+  "id": "motherduck-duckdb-datasource",
+  "metrics": true,
+  "backend": true,
+  "executable": "gpx_duckdb_datasource",
+  "info": {
+    "description": "Duck db and mother duck datasource for grafana",
+    "author": {
+      "name": "Motherduck"
+    },
+    "keywords": ["datasource"],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=10.3.3",
+    "plugins": []
+  }
+}
