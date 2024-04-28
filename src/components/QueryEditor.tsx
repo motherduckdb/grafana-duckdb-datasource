@@ -1,10 +1,10 @@
 import React, { ChangeEvent } from 'react';
 import { InlineField, Input, Stack } from '@grafana/ui';
 import { QueryEditorProps } from '@grafana/data';
-import { DataSource } from '../datasource';
-import { MyDataSourceOptions, MyQuery } from '../types';
+import { DuckDBDataSource } from '../datasource';
+import { DuckDBDataSourceOptions, DuckDBQuery } from '../types';
 
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+type Props = QueryEditorProps<DuckDBDataSource, DuckDBQuery, DuckDBDataSourceOptions>;
 
 export function QueryEditor({ query, onChange, onRunQuery }: Props) {
   const onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {

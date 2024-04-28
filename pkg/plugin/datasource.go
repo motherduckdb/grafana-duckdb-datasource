@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	_ "github.com/marcboeker/go-duckdb"
 	"github.com/motherduck/duckdb-datasource/pkg/models"
 )
 
