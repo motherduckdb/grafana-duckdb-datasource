@@ -240,7 +240,7 @@ func buildBackend(cfg build.Config) error {
 		ldFlags = fmt.Sprintf("%s -X '%s=%s'", ldFlags, k, v)
 	}
 	// args = append(args, "-tags=duckdb_use_lib")
-	args = append(args, "-extldflags", "-static-libstdc++", "-ldflags", ldFlags)
+	args = append(args, "-ldflags", `-extldflags "-static-libstdc++"`, ldFlags)
 
 	if cfg.EnableDebug {
 		args = append(args, "-gcflags=all=-N -l")
