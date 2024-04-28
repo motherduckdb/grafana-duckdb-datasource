@@ -214,7 +214,7 @@ func buildBackend(cfg build.Config) error {
 		outputPath = defaultOutputBinaryPath
 	}
 	args := []string{
-		"-o", filepath.Join(outputPath, exeName),
+		"build", "-o", filepath.Join(outputPath, exeName),
 	}
 
 	info := getBuildInfoFromEnvironment()
