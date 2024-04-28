@@ -200,8 +200,6 @@ func buildBackend(cfg build.Config) error {
 		ldFlags = `-extldflags "-static"`
 	}
 
-	ldFlags = `extldflags "-static-libstdc++"`
-
 	if !cfg.EnableDebug {
 		// Add linker flags to drop debug information
 		prefix := ""
@@ -242,7 +240,7 @@ func buildBackend(cfg build.Config) error {
 		ldFlags = fmt.Sprintf("%s -X '%s=%s'", ldFlags, k, v)
 	}
 	// args = append(args, "-tags=duckdb_use_lib")
-	args = append(args, "-ldflags", ldFlags)
+	args = append(args, "-extldflags", "-static-libstdc++", "-ldflags", ldFlags)
 
 	if cfg.EnableDebug {
 		args = append(args, "-gcflags=all=-N -l")
