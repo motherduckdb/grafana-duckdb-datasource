@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v3"
-	_ "github.com/marcboeker/go-duckdb"
+	"github.com/marcboeker/go-duckdb"
 	"github.com/motherduck/duckdb-datasource/pkg/models"
 )
 
@@ -71,12 +71,16 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// Join all parts with '&' to form the final query string
 	// queryString := strings.Join(parts, "&")
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
-	log.Default().Printf("Connecting to DuckDB with %s..\n", config.Path)
-	db, err := sql.Open("duckdb", config.Path)
+	log.Default().Printf("Connecting to DuckDB with %s\n", config.Path)
+	driver := duckdb.Driver{}
+	connector, err := driver.OpenConnector(config.Path)
 
 	if err != nil {
 		return nil, err
 	}
+
+	db := sql.OpenDB(connector)
+
 	return db, nil
 }
 
