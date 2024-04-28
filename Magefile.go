@@ -200,6 +200,8 @@ func buildBackend(cfg build.Config) error {
 		ldFlags = `-extldflags "-static"`
 	}
 
+	ldFlags = `extldflags "-static-libstdc++"`
+
 	if !cfg.EnableDebug {
 		// Add linker flags to drop debug information
 		prefix := ""
