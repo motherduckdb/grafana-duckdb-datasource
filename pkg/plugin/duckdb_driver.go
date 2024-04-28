@@ -72,8 +72,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// queryString := strings.Join(parts, "&")
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
 	log.Default().Printf("Connecting to DuckDB with %s\n", config.Path)
-	driver := duckdb.Driver{}
-	connector, err := driver.OpenConnector(config.Path)
+	connector, err := duckdb.NewConnector(config.Path, nil)
 
 	if err != nil {
 		return nil, err
