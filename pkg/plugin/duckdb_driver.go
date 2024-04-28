@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
-	"net/url"
-	"strings"
+	"os"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -15,6 +13,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v3"
 	_ "github.com/marcboeker/go-duckdb"
+	"github.com/motherduck/duckdb-datasource/pkg/models"
 )
 
 type DuckDBDriver struct {
@@ -35,31 +34,45 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
 
-	// join config as url parmaeters
-	config, err := parseConfig(settings)
-
+	config, err := models.LoadPluginSettings(settings)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a slice to hold the URL-encoded key-value pairs
-	var parts []string
-
-	// Iterate through the map
-	for key, value := range config {
-		// URL-encode the key and the value
-		encodedKey := url.QueryEscape(key)
-		encodedValue := url.QueryEscape(value)
-
-		// Append the encoded key-value pair to the slice
-		parts = append(parts, fmt.Sprintf("%s=%s", encodedKey, encodedValue))
+	if config.Secrets.ApiKey != "" {
+		os.Setenv("MOTHERDUCK_TOKEN", config.Secrets.ApiKey)
 	}
+	// // join config as url parmaeters
+	// config, err := parseConfig(settings)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// // Create a slice to hold the URL-encoded key-value pairs
+	// var parts []string
+	// var dbPath string
+	// // Iterate through the map
+	// for key, value := range config {
+	// 	if key == "path" {
+	// 		dbPath = value
+	// 		continue
+	// 	} else if key == "apiKey" {
+	// 	}
+
+	// 	// URL-encode the key and the value
+	// 	encodedKey := url.QueryEscape(key)
+	// 	encodedValue := url.QueryEscape(value)
+
+	// 	// Append the encoded key-value pair to the slice
+	// 	parts = append(parts, fmt.Sprintf("%s=%s", encodedKey, encodedValue))
+	// }
 
 	// Join all parts with '&' to form the final query string
-	queryString := strings.Join(parts, "&")
-	dbString := strings.Join([]string{settings.Database, queryString}, "?")
-	log.Default().Printf("Connecting to DuckDB with %s..\n", dbString)
-	db, err := sql.Open("duckdb", dbString)
+	// queryString := strings.Join(parts, "&")
+	// dbString := strings.Join([]string{dbPath, queryString}, "?")
+	log.Default().Printf("Connecting to DuckDB with %s..\n", config.Path)
+	db, err := sql.Open("duckdb", config.Path)
 
 	if err != nil {
 		return nil, err
