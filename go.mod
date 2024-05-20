@@ -6,11 +6,12 @@ require (
 	github.com/grafana/grafana-plugin-sdk-go v0.224.0
 	github.com/grafana/sqlds/v3 v3.2.0
 	github.com/magefile/mage v1.15.0
-	github.com/marcboeker/go-duckdb v1.5.6
+	github.com/marcboeker/go-duckdb v1.6.4
 )
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
+	github.com/apache/arrow/go/v14 v14.0.2 // indirect
 	github.com/apache/arrow/go/v15 v15.0.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -103,5 +104,4 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	src.techknowlogick.com/xgo v1.7.1-0.20240403232151-e01c4fbef884 // indirect
 )
