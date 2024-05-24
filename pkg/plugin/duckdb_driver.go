@@ -75,8 +75,6 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	log.Default().Printf("Connecting to DuckDB with %s\n", config.Path)
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{
-			"INSTALL 'iceberg'",
-			"LOAD 'iceberg'",
 			"INSTALL 'motherduck'",
 			"LOAD 'motherduck'",
 			"SELECT * FROM duckdb_extensions()",
