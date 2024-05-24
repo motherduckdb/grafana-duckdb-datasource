@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"log"
 	"os"
@@ -40,7 +41,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	}
 
 	if config.Secrets.ApiKey != "" {
-		os.Setenv("MOTHERDUCK_TOKEN", config.Secrets.ApiKey)
+		os.Setenv("motherduck_token", config.Secrets.ApiKey)
 	}
 	// // join config as url parmaeters
 	// config, err := parseConfig(settings)
@@ -72,7 +73,20 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// queryString := strings.Join(parts, "&")
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
 	log.Default().Printf("Connecting to DuckDB with %s\n", config.Path)
-	connector, err := duckdb.NewConnector(config.Path, nil)
+	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
+		bootQueries := []string{
+			"INSTALL 'motherduck'",
+			"LOAD 'motherduck'",
+		}
+
+		for _, query := range bootQueries {
+			_, err = execer.ExecContext(context.Background(), query, nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 	if err != nil {
 		return nil, err
