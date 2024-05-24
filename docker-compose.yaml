@@ -23,6 +23,7 @@ services:
       - ./dist:/var/lib/grafana/plugins/motherduck-duckdb-datasource
       - ./provisioning:/etc/grafana/provisioning
       - .:/root/motherduck-duckdb-datasource
+      - /Users/louisa/.duckdb:/root/.duckdb
 
     environment:
       NODE_ENV: development
