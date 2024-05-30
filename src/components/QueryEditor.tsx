@@ -1,45 +1,8 @@
-import React, { ChangeEvent } from 'react';
-import { InlineField, Input, Stack } from '@grafana/ui';
+import React from 'react';
 import { QueryEditorProps } from '@grafana/data';
 import { DuckDBDataSource } from '../datasource';
-import { DuckDBDataSourceOptions, DuckDBQuery } from '../types';
+import { SqlQueryEditor, SQLQuery, SQLOptions } from '@grafana/plugin-ui';
 
-type Props = QueryEditorProps<DuckDBDataSource, DuckDBQuery, DuckDBDataSourceOptions>;
-
-export function QueryEditor({ query, onChange, onRunQuery }: Props) {
-  const onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, queryText: event.target.value });
-  };
-
-  const onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
-  };
-
-  const { queryText, constant } = query;
-
-  return (
-    <Stack gap={0}>
-      <InlineField label="Constant">
-        <Input
-          id="query-editor-constant"
-          onChange={onConstantChange}
-          value={constant}
-          width={8}
-          type="number"
-          step="0.1"
-        />
-      </InlineField>
-      <InlineField label="Query Text" labelWidth={16} tooltip="Not used yet">
-        <Input
-          id="query-editor-query-text"
-          onChange={onQueryTextChange}
-          value={queryText || ''}
-          required
-          placeholder="Enter a query"
-        />
-      </InlineField>
-    </Stack>
-  );
+export function DuckDBQueryEditor(props: QueryEditorProps<DuckDBDataSource, SQLQuery, SQLOptions>) {
+  return <SqlQueryEditor {...props}/>;
 }

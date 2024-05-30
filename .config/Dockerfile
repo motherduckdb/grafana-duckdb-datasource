@@ -1,7 +1,7 @@
 ARG grafana_version=latest
 ARG grafana_image=grafana-enterprise
 
-FROM grafana/${grafana_image}:${grafana_version}
+FROM grafana/${grafana_image}:${grafana_version}-ubuntu
 
 ARG development=true
 
@@ -26,7 +26,7 @@ WORKDIR $GF_PATHS_HOME
 
 USER root
 
-# Installing supervisor and inotify-tools
+# Installing supervisor and inotify-tools and gdb
 RUN if [ "${development}" = "true" ]; then \
     if grep -i -q alpine /etc/issue; then \
         apk add supervisor inotify-tools git; \

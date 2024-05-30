@@ -12,7 +12,8 @@
     "lint:fix": "npm run lint -- --fix",
     "e2e": "playwright test",
     "server": "docker-compose up --build",
-    "sign": "npx --yes @grafana/sign-plugin@latest"
+    "sign": "npx --yes @grafana/sign-plugin@latest",
+    "postinstall": "patch-package"
   },
   "author": "Motherduck",
   "license": "Apache-2.0",
@@ -60,9 +61,12 @@
   "dependencies": {
     "@emotion/css": "11.10.6",
     "@grafana/data": "10.3.3",
+    "@grafana/experimental": "^1.7.11",
+    "@grafana/plugin-ui": "0.7.0",
     "@grafana/runtime": "10.3.3",
-    "@grafana/ui": "10.3.3",
     "@grafana/schema": "10.3.3",
+    "@grafana/ui": "10.3.3",
+    "patch-package": "^8.0.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "tslib": "2.5.3"
