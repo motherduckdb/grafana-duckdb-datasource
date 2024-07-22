@@ -1,0 +1,3 @@
+[submodule "grafana-plugin-sdk-go"]
+	path = grafana-plugin-sdk-go
+	url = https://github.com/grafana/grafana-plugin-sdk-go.git
