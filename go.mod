@@ -6,7 +6,7 @@ require (
 	github.com/grafana/grafana-plugin-sdk-go v0.224.0
 	github.com/grafana/sqlds/v3 v3.2.0
 	github.com/magefile/mage v1.15.0
-	github.com/marcboeker/go-duckdb v1.6.4
+	github.com/marcboeker/go-duckdb v1.7.0
 )
 
 require (
