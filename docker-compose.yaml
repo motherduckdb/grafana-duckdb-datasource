@@ -5,7 +5,6 @@ services:
     user: root
     container_name: 'motherduck-duckdb-datasource'
 
-    platform: 'linux/amd64'
     build:
       context: ./.config
       args:
