@@ -65,7 +65,7 @@ jobs:
         uses: magefile/mage-action@v3
         with:
           version: latest
-          args: buildAll
+          args: -v build:Linux build:GenerateManifestFile
 
       - name: Check for E2E
         id: check-for-e2e
