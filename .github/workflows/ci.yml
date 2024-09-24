@@ -19,6 +19,8 @@ jobs:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
