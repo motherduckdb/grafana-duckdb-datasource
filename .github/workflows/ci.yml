@@ -14,7 +14,13 @@ permissions: read-all
 
 jobs:
   build:
+    name: Build, lint and unit tests
     runs-on: ubuntu-latest
+    outputs:
+      plugin-id: ${{ steps.metadata.outputs.plugin-id }}
+      plugin-version: ${{ steps.metadata.outputs.plugin-version }}
+      has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
+      has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
     env:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
@@ -75,40 +81,6 @@ jobs:
             echo "has-e2e=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install Playwright Browsers
-        if: steps.check-for-e2e.outputs.has-e2e == 'true'
-        run: npm exec playwright install --with-deps
-
-      - name: Start grafana docker
-        if: steps.check-for-e2e.outputs.has-e2e == 'true'
-        run: docker-compose up -d
-
-      - name: Wait for Grafana to start
-        if: steps.check-for-e2e.outputs.has-e2e == 'true'
-        uses: nev7n/wait_for_response@v1
-        with:
-          url: 'http://localhost:3000/'
-          responseCode: 200
-          timeout: 60000
-          interval: 500
-
-      - name: Run e2e tests
-        id: run-e2e-tests
-        if: steps.check-for-e2e.outputs.has-e2e == 'true'
-        run: npm run e2e
-
-      - name: Stop grafana docker
-        if: steps.check-for-e2e.outputs.has-e2e == 'true'
-        run: docker-compose down
-
-      - name: Archive E2E output
-        uses: actions/upload-artifact@v4
-        if: steps.check-for-e2e.outputs.has-e2e == 'true' && steps.run-e2e-tests.outcome != 'success'
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 5
-
       - name: Sign plugin
         run: npm run sign
         if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' }}
@@ -138,3 +110,96 @@ jobs:
           name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
           path: ${{ steps.metadata.outputs.plugin-id }}
           retention-days: 5
+
+  resolve-versions:
+    name: Resolve e2e images
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    needs: build
+    if: ${{ needs.build.outputs.has-e2e == 'true' }}
+    outputs:
+      matrix: ${{ steps.resolve-versions.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Resolve Grafana E2E versions
+        id: resolve-versions
+        uses: grafana/plugin-actions/e2e-version@main
+
+  playwright-tests:
+    needs: [resolve-versions, build]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        GRAFANA_IMAGE: ${{fromJson(needs.resolve-versions.outputs.matrix)}}
+    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download plugin
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
+
+      - name: Execute permissions on binary
+        if: needs.build.outputs.has-backend == 'true'
+        run: |
+          chmod +x ./dist/gpx_*
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Start Grafana
+        run: |
+          docker compose pull
+          DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
+
+      - name: Wait for Grafana to start
+        uses: nev7n/wait_for_response@v1
+        with:
+          url: 'http://localhost:3000/'
+          responseCode: 200
+          timeout: 60000
+          interval: 500
+
+      - name: Install Playwright Browsers
+        run: npm exec playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        id: run-tests
+        run: npm run e2e
+
+      - name: Docker logs
+        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+        run: |
+          docker logs motherduck-duckdb-datasource >& grafana-server.log
+
+      - name: Stop grafana docker
+        run: docker compose down
+
+      - name: Upload server log
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+        with:
+          name: ${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}-server-log
+          path: grafana-server.log
+          retention-days: 5
+
+      # Uncomment this step to upload the Playwright report to Github artifacts.
+      # If your repository is public, the report will be public on the Internet so beware not to expose sensitive information.
+      # - name: Upload artifacts
+      #   uses: actions/upload-artifact@v4
+      #   if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+      #   with:
+      #     name: playwright-report-${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}
+      #     path: playwright-report/
+      #     retention-days: 5
