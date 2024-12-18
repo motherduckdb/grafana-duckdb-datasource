@@ -31,14 +31,14 @@ interface CompletionProviderGetterArgs {
 
 
 function showTablesQuery() {
-  return `select array_to_string([database_name, schema_name, table_name], ".") as "table" from information_schema.tables`;
+  return `select array_to_string(array_value(table_catalog, table_schema, table_name), '.') as "table" from information_schema.tables;`;
 }
 
 
 function getSchemaQuery(table: string, order?: boolean) {
   // we will put table-name between single-quotes, so we need to escape single-quotes
   // in the table-name
-  const tableNamePart = "'" + table.replace(/'/g, "''") + "'";
+  const tableNamePart = "'" + (table.split(".").at(2)?.replace(/'/g, "''") || '') + "'";
   const orderByPart = order ? ' order by column_name' : '';
   return `select column_name as "column", data_type as "type"
     from information_schema.columns
@@ -149,7 +149,6 @@ export class DuckDBDataSource extends SqlDatasource {
 
   async fetchTables(): Promise<string[]> {
     const tables = await this.runSql<{ table: string[] }>(showTablesQuery(), { refId: 'tables' });
-    console.log("fetchTables: tables fetched", tables);
     return tables.fields.table?.values.flat() ?? [];
   }
 
@@ -198,7 +197,7 @@ export class DuckDBDataSource extends SqlDatasource {
 
     return {
       init: () => Promise.resolve(true),
-      datasets: () => Promise.resolve([]),
+      datasets: () => Promise.resolve(["default"]),
       tables: (dataset) => this.fetchTables(),
       fields: async (query: SQLQuery, order?: boolean) => {
         if (!query?.table) {
@@ -214,7 +213,6 @@ export class DuckDBDataSource extends SqlDatasource {
       toRawSql,
       lookup: async () => {
         const tables = await this.fetchTables();
-        console.log("lookup: tables fetched", tables);
         return tables.map((t) => ({ name: t, completion: t }));
       },
       getSqlCompletionProvider: () =>  getSqlCompletionProvider(args),

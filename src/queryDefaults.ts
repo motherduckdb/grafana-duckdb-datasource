@@ -18,6 +18,7 @@ export function applyQueryDefaults(q?: SQLQuery): SQLQuery {
       format: q?.format !== undefined ? q.format : QueryFormat.Table,
       rawSql: q?.rawSql || '',
       editorMode,
+      dataset: "default",
       sql: q?.sql || {
         columns: [createFunctionField()],
         groupBy: [setGroupByField()],
