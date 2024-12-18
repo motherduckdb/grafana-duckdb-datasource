@@ -1,7 +1,9 @@
 import {  uniqBy } from 'lodash';
+// @ts-ignore
+import sqlFormatter from 'sql-formatter-plus';
 import { DataSourceInstanceSettings, ScopedVars, DataFrame, MetricFindValue, DataQueryRequest} from '@grafana/data';
 import { TemplateSrv, HealthCheckError, HealthStatus } from '@grafana/runtime';
-import { Aggregate, DB, ResponseParser, SQLOptions, SQLQuery, SQLSelectableValue, SqlDatasource, SqlQueryModel } from '@grafana/plugin-ui';
+import { Aggregate, DB, ResponseParser, SQLOptions, SQLQuery, SQLSelectableValue, SqlDatasource, SqlQueryModel, LanguageDefinition } from '@grafana/plugin-ui';
 import { applyQueryDefaults } from './queryDefaults';
 import { VariableFormatID } from '@grafana/schema';
 import { getFieldConfig, toRawSql } from './sqlUtil';
@@ -14,25 +16,33 @@ import {
   TableIdentifier,
 } from '@grafana/experimental';
 
+
+export function formatSQL(q: string) {
+  return sqlFormatter.format(q).replace(/(\$ \{ .* \})|(\$ __)|(\$ \w+)/g, (m: string) => {
+    return m.replace(/\s/g, '');
+  });
+}
+
+
 interface CompletionProviderGetterArgs {
   getColumns: React.MutableRefObject<(t: SQLQuery) => Promise<ColumnDefinition[]>>;
   getTables: React.MutableRefObject<(d?: string) => Promise<TableDefinition[]>>;
 }
 
 
-function showTables() {
-  return `select table_name as "table" from information_schema.tables`;
+function showTablesQuery() {
+  return `select array_to_string([database_name, schema_name, table_name], ".") as "table" from information_schema.tables`;
 }
 
 
-function getSchema(table: string) {
+function getSchemaQuery(table: string, order?: boolean) {
   // we will put table-name between single-quotes, so we need to escape single-quotes
   // in the table-name
   const tableNamePart = "'" + table.replace(/'/g, "''") + "'";
-
+  const orderByPart = order ? ' order by column_name' : '';
   return `select column_name as "column", data_type as "type"
     from information_schema.columns
-    where table_name = ${tableNamePart};`;
+    where table_name = ${tableNamePart} ${orderByPart};`;
 }
 
 
@@ -129,25 +139,27 @@ async function functions(): Promise<Aggregate[]> {
 
 
 export class DuckDBDataSource extends SqlDatasource {
-  query(request: DataQueryRequest<SQLQuery>) {
-    console.log('EEEEEEEEE DuckDBDataSource.query=', request);
+  sqlLanguageDefinition: LanguageDefinition | undefined = undefined;
+
+  query(request: DataQueryRequest<SQLQuery>) {;
     const result = super.query(request);
     return result;
   }
 
 
   async fetchTables(): Promise<string[]> {
-    const tables = await this.runSql<{ table: string[] }>(showTables(), { refId: 'tables' });
+    const tables = await this.runSql<{ table: string[] }>(showTablesQuery(), { refId: 'tables' });
+    console.log("fetchTables: tables fetched", tables);
     return tables.fields.table?.values.flat() ?? [];
   }
 
-  async fetchFields(query: SQLQuery): Promise<SQLSelectableValue[]> {
+  async fetchFields(query: SQLQuery, order?: boolean): Promise<SQLSelectableValue[]> {
     const { table } = query;
     if (table === undefined) {
       // if no table-name, we are not able to query for fields
       return [];
     }
-    const schema = await this.runSql<{ column: string; type: string }>(getSchema(table), { refId: 'columns' });
+    const schema = await this.runSql<{ column: string; type: string }>(getSchemaQuery(table, order), { refId: 'columns' });
     const result: SQLSelectableValue[] = [];
     for (let i = 0; i < schema.length; i++) {
       const column = schema.fields.column.values[i];
@@ -155,6 +167,23 @@ export class DuckDBDataSource extends SqlDatasource {
       result.push({ label: column, value: column, type, ...getFieldConfig(type) });
     }
     return result;
+  }
+
+  getSqlLanguageDefinition(db: DB): LanguageDefinition {
+    if (this.sqlLanguageDefinition !== undefined) {
+      return this.sqlLanguageDefinition;
+    }
+
+    const args = {
+      getColumns: { current: (query: SQLQuery) => fetchColumns(db, query) },
+      getTables: { current: () => fetchTables(db) },
+    };
+    this.sqlLanguageDefinition = {
+      id: 'pgsql',
+      completionProvider: getSqlCompletionProvider(args),
+      formatter: formatSQL,
+    };
+    return this.sqlLanguageDefinition;
   }
 
   getDB(): DB {
@@ -170,19 +199,22 @@ export class DuckDBDataSource extends SqlDatasource {
     return {
       init: () => Promise.resolve(true),
       datasets: () => Promise.resolve([]),
-      tables: () => this.fetchTables(),
-      fields: async (query: SQLQuery) => {
+      tables: (dataset) => this.fetchTables(),
+      fields: async (query: SQLQuery, order?: boolean) => {
         if (!query?.table) {
           return [];
         }
-        return this.fetchFields(query);
+        return this.fetchFields(query, order);
       },
+      // @ts-ignore
+      getEditorLanguageDefinition: () => this.getSqlLanguageDefinition(this.db),
       validateQuery: (query) =>
         Promise.resolve({ isError: false, isValid: true, query, error: '', rawSql: query.rawSql }),
       dsID: () => this.id,
       toRawSql,
       lookup: async () => {
         const tables = await this.fetchTables();
+        console.log("lookup: tables fetched", tables);
         return tables.map((t) => ({ name: t, completion: t }));
       },
       getSqlCompletionProvider: () =>  getSqlCompletionProvider(args),
