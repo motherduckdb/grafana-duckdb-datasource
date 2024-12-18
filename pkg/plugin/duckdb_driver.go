@@ -7,7 +7,12 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"reflect"
+	"regexp"
+	"strconv"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -120,7 +125,327 @@ func (d *DuckDBDriver) Macros() sqlds.Macros {
 }
 
 func (d *DuckDBDriver) Converters() []sqlutil.Converter {
-	return sqlutil.NewRowConverter().Converters
+	return GetConverterList()
+}
+
+// Originally from https://github.com/snakedotdev/grafana-duckdb-datasource
+// Apache 2.0 Licensed
+// Copyright snakedotdev
+// Modified from original version
+type NullDecimal struct {
+	Decimal duckdb.Decimal
+	Valid   bool
+}
+
+func (n *NullDecimal) Scan(value any) error {
+	if value == nil {
+		n.Decimal = duckdb.Decimal{
+			Width: 0,
+			Scale: 0,
+			Value: nil,
+		}
+		n.Valid = false
+		return nil
+	}
+	n.Valid = true
+	if err := mapstructure.Decode(value, &n.Decimal); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *NullDecimal) Value() (driver.Value, error) {
+	if !n.Valid {
+		return nil, nil
+	}
+	return n.Decimal, nil
+}
+
+func GetConverterList() []sqlutil.Converter {
+	// NEED:
+	// NULL to uint64, uint32, uint16, uint8,  not supported
+	// Names: BIT, UBIGINT, UHUGEINT, UINTEGER, USMALLINT, UTINYINT
+	strConverters := sqlutil.ToConverters([]sqlutil.StringConverter{
+		{
+			Name:           "handle FLOAT8",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "FLOAT8",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableFloat64,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					v, err := strconv.ParseFloat(*in, 64)
+					if err != nil {
+						return nil, err
+					}
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle FLOAT32",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "FLOAT32",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableFloat64,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					v, err := strconv.ParseFloat(*in, 64)
+					if err != nil {
+						return nil, err
+					}
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle FLOAT",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "FLOAT",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableFloat64,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					v, err := strconv.ParseFloat(*in, 64)
+					if err != nil {
+						return nil, err
+					}
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle INT2",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "INT2",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt16,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					i64, err := strconv.ParseInt(*in, 10, 16)
+					if err != nil {
+						return nil, err
+					}
+					v := int16(i64)
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle INT8",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "INT8",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt16,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					i64, err := strconv.ParseInt(*in, 10, 16)
+					if err != nil {
+						return nil, err
+					}
+					v := int16(i64)
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle TINYINT",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "TINYINT",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt16,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					i64, err := strconv.ParseInt(*in, 10, 16)
+					if err != nil {
+						return nil, err
+					}
+					v := int16(i64)
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle INT16",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "INT16",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt16,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					i64, err := strconv.ParseInt(*in, 10, 16)
+					if err != nil {
+						return nil, err
+					}
+					v := int16(i64)
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle SMALLINT",
+			InputScanKind:  reflect.Interface,
+			InputTypeName:  "SMALLINT",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt16,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					i64, err := strconv.ParseInt(*in, 10, 16)
+					if err != nil {
+						return nil, err
+					}
+					v := int16(i64)
+					return &v, nil
+				},
+			},
+		},
+	}...,
+	)
+	converters := []sqlutil.Converter{
+		{
+			Name:           "NULLABLE decimal converter",
+			InputScanType:  reflect.TypeOf(NullDecimal{}),
+			InputTypeRegex: regexp.MustCompile("DECIMAL.*"),
+			FrameConverter: sqlutil.FrameConverter{
+				FieldType: data.FieldTypeNullableFloat64,
+				ConverterFunc: func(n interface{}) (interface{}, error) {
+					v := n.(*NullDecimal)
+
+					if !v.Valid {
+						return (*float64)(nil), nil
+					}
+
+					f := v.Decimal.Float64()
+					return &f, nil
+				},
+			},
+		},
+	}
+	//{
+	//	Name:           "handle FLOAT4",
+	//	InputScanType: reflect.TypeOf(sql.NullInt16{}),
+	//	InputTypeName:  "FLOAT4",
+	//	FrameConverter: sqlutil.FrameConverter{
+	//		FieldType: data.FieldTypeNullableInt8,
+	//		ConverterFunc: func(in interface{}) (interface{}, error) { return in, nil },
+	//	},
+	//	ConversionFunc:
+	//	Replacer: &sqlutil.StringFieldReplacer{
+	//		OutputFieldType: data.FieldTypeNullableFloat64,
+	//		ReplaceFunc: func(in *string) (any, error) {
+	//			if in == nil {
+	//				return nil, nil
+	//			}
+	//			v, err := strconv.ParseFloat(*in, 64)
+	//			if err != nil {
+	//				return nil, err
+	//			}
+	//			return &v, nil
+	//		},
+	//	},
+	//},
+	//{
+	//	Name:           "handle FLOAT8",
+	//	InputScanKind:  reflect.Interface,
+	//	InputTypeName:  "FLOAT8",
+	//	ConversionFunc: func(in *string) (*string, error) { return in, nil },
+	//	Replacer: &sqlutil.StringFieldReplacer{
+	//		OutputFieldType: data.FieldTypeNullableFloat64,
+	//		ReplaceFunc: func(in *string) (any, error) {
+	//			if in == nil {
+	//				return nil, nil
+	//			}
+	//			v, err := strconv.ParseFloat(*in, 64)
+	//			if err != nil {
+	//				return nil, err
+	//			}
+	//			return &v, nil
+	//		},
+	//	},
+	//},
+	//{
+	//	Name:           "handle NUMERIC",
+	//	InputScanKind:  reflect.Interface,
+	//	InputTypeName:  "NUMERIC",
+	//	ConversionFunc: func(in *string) (*string, error) { return in, nil },
+	//	Replacer: &sqlutil.StringFieldReplacer{
+	//		OutputFieldType: data.FieldTypeNullableFloat64,
+	//		ReplaceFunc: func(in *string) (any, error) {
+	//			if in == nil {
+	//				return nil, nil
+	//			}
+	//			v, err := strconv.ParseFloat(*in, 64)
+	//			if err != nil {
+	//				return nil, err
+	//			}
+	//			return &v, nil
+	//		},
+	//	},
+	//},
+	//{
+	//	Name:           "handle DECIMAL",
+	//	InputScanKind:  reflect.Interface,
+	//	InputTypeName:  "DECIMAL(15,2)",
+	//	ConversionFunc: func(in *string) (*string, error) { return in, nil },
+	//	Replacer: &sqlutil.StringFieldReplacer{
+	//		OutputFieldType: data.FieldTypeNullableFloat64,
+	//		ReplaceFunc: func(in *string) (any, error) {
+	//			if in == nil {
+	//				return nil, nil
+	//			}
+	//			v, err := strconv.ParseFloat(*in, 64)
+	//			if err != nil {
+	//				return nil, err
+	//			}
+	//			return &v, nil
+	//		},
+	//	},
+	//},
+	//{
+	//	Name:           "handle INT2",
+	//	InputScanKind:  reflect.Interface,
+	//	InputTypeName:  "INT2",
+	//	ConversionFunc: func(in *string) (*string, error) { return in, nil },
+	//	Replacer: &sqlutil.StringFieldReplacer{
+	//		OutputFieldType: data.FieldTypeNullableInt16,
+	//		ReplaceFunc: func(in *string) (any, error) {
+	//			if in == nil {
+	//				return nil, nil
+	//			}
+	//			i64, err := strconv.ParseInt(*in, 10, 16)
+	//			if err != nil {
+	//				return nil, err
+	//			}
+	//			v := int16(i64)
+	//			return &v, nil
+	//		},
+	//	},
+	//},
+	return append(converters, strConverters...)
 }
 
 // // Driver is a simple interface that defines how to connect to a backend SQL datasource
