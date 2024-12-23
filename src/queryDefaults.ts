@@ -3,8 +3,6 @@ import { createFunctionField, setGroupByField } from './sqlUtil';
 
 
 export function applyQueryDefaults(q?: SQLQuery): SQLQuery {
-    console.log('EEEEEEE applyQueryDefaults = ', q?.format);
-    console.log('EEEEEEE queryforma.Table = ', QueryFormat.Table);
     let editorMode = q?.editorMode || EditorMode.Builder;
   
     // Switching to code editor if the query was created before visual query builder was introduced.

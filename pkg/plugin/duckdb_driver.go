@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"log"
 	"os"
 	"reflect"
 	"regexp"
@@ -77,12 +76,10 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// Join all parts with '&' to form the final query string
 	// queryString := strings.Join(parts, "&")
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
-	log.Default().Printf("Connecting to DuckDB with %s\n", config.Path)
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{
 			"INSTALL 'motherduck'",
 			"LOAD 'motherduck'",
-			"SELECT * FROM duckdb_extensions()",
 		}
 
 		for _, query := range bootQueries {
@@ -447,14 +444,3 @@ func GetConverterList() []sqlutil.Converter {
 	//},
 	return append(converters, strConverters...)
 }
-
-// // Driver is a simple interface that defines how to connect to a backend SQL datasource
-// // Plugin creators will need to implement this in order to create a managed datasource
-// type Driver interface {
-// 	// Connect connects to the database. It does not need to call `db.Ping()`
-// 	Connect(context.Context, backend.DataSourceInstanceSettings, json.RawMessage) (*sql.DB, error)
-// 	// Settings are read whenever the plugin is initialized, or after the data source settings are updated
-// 	Settings(context.Context, backend.DataSourceInstanceSettings) DriverSettings
-// 	Macros() Macros
-// 	Converters() []sqlutil.Converter
-// }

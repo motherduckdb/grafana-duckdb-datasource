@@ -1,20 +1,19 @@
 module github.com/motherduck/duckdb-datasource
 
-go 1.22.7
+go 1.23
 
 toolchain go1.23.4
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.260.3
 	github.com/grafana/sqlds/v3 v3.2.0
-	github.com/marcboeker/go-duckdb v1.7.0
+	github.com/marcboeker/go-duckdb v1.8.3
 	github.com/mitchellh/mapstructure v1.5.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/apache/arrow-go/v18 v18.0.1-0.20241212180703-82be143d7c30 // indirect
-	github.com/apache/arrow/go/v14 v14.0.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
