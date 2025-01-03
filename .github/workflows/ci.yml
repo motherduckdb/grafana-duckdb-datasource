@@ -69,7 +69,7 @@ jobs:
 
         run: |
           cat > run.sh << 'EOF'
-          !#/bin/sh
+          #!/bin/sh
           mage coverage
           mage -v build:LinuxARM64
           EOF
