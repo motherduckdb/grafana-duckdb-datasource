@@ -34,33 +34,49 @@ jobs:
           name: linux-amd64-dist
           path: dist/
 
-  # build-linux-arm64:
-  #   runs-on: ubuntu-latest
-  #   container: 
-  #     image: arm64v8/golang:1.23
-  #     options: --platform linux/arm64
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
-  #     - uses: actions/setup-go@v5
-  #       with:
-  #         go-version: '1.23'
-  #     - uses: magefile/mage-action@v3
-  #       with:
-  #         version: latest
-  #         args: coverage
-  #     - uses: magefile/mage-action@v3
-  #       env:
-  #         GOARCH: arm64
-  #       with:
-  #         version: latest
-  #         args: -v build:LinuxARM64
-  #     - name: Upload Linux ARM64 artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: linux-arm64-dist
-  #         path: dist/
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: linux/arm64
+
+      - name: Create temporary Dockerfile
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM arm64v8/golang:1.23
+
+          RUN go install github.com/magefile/mage@latest
+          RUN mage -init
+
+          RUN apt-get update && apt-get install -y \
+              gcc-aarch64-linux-gnu \
+              g++-aarch64-linux-gnu
+          
+          RUN rm -rf /var/lib/apt/lists/*
+
+          WORKDIR /repo
+
+          EOF
+
+      - name: Build and run Container
+        shell: sh
+
+        run: |
+          docker build --platform linux/arm64  -t go-arm64 .
+          docker run --platform linux/arm64 -v `pwd`:/repo --name go-arm64 go-arm64 mage coverage
+          docker run --platform linux/arm64 -v `pwd`:/repo --name go-arm64 go-arm64 mage -v build:LinuxARM64
+
+      - name: Upload Linux ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-dist
+          path: dist/
 
   build-macos-arm64:
     runs-on: macos-latest
@@ -180,12 +196,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-
-      - name: Download backend dist directory
-        run: |
-          mkdir -p dist
-          ls all-artifacts
-          cp -r all-artifacts/*/* dist/
 
       - name: Check for E2E
         id: check-for-e2e
