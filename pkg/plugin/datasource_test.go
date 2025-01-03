@@ -28,8 +28,6 @@ func TestQueryData(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	backend.Logger.Info("Response", "resp", resp)
 	if len(resp.Responses) != 1 {
 		t.Fatal("QueryData must return a response")
 	}
