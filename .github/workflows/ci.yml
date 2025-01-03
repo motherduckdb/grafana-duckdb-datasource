@@ -57,8 +57,12 @@ jobs:
           RUN apt-get update && apt-get install -y \
               gcc-aarch64-linux-gnu \
               g++-aarch64-linux-gnu
-          
+        
           RUN rm -rf /var/lib/apt/lists/*
+
+          # Address Issue: error obtaining VCS status: exit status 128
+          #   Use -buildvcs=false to disable VCS stamping.
+          ENV GOFLAGS=-buildvcs=false  
 
           WORKDIR /repo
 
@@ -236,17 +240,22 @@ jobs:
           echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
           echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
 
+      - name: Add execute permissions on binary
+        if: needs.build.outputs.has-backend == 'true'
+        run: |
+          chmod +x ./dist/gpx_*
+
       - name: Package plugin
         id: package-plugin
         run: |
           mv dist ${{ steps.metadata.outputs.plugin-id }}
-          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+          zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} 
 
       - name: Archive Build
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
-          path: ${{ steps.metadata.outputs.plugin-id }}
+          path: ${{ steps.metadata.outputs.archive }}
           retention-days: 5
 
   resolve-versions:
