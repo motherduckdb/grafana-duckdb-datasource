@@ -114,8 +114,8 @@ SELECT * FROM read_json_auto('path/to/file.json');
 ### Updating data in the DuckDB file
 DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#handling-concurrency) does not allow multiple processes to attach the same DuckDB database file at the same time, if at least one of them requires read-write access. This means another process cannot connect to the same DuckDB database file to write to it while Grafana has it as a data source, so real time updates t. There are a few ways to work around this:
   - Copy the DuckDB file for updates, then copy the updated DuckDB file to overwrite the original file. The plugin will automatically reload the file when it detects a change. 
-  - Write to other file formats, , and read using DuckDB extensions. Note that this may not directly querying the DuckDB file.
-  - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana at the same time.
+  - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
+  - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
 
 ## Local Development
 
