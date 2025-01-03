@@ -14,7 +14,7 @@ export function applyQueryDefaults(q?: SQLQuery): SQLQuery {
       ...q,
       refId: q?.refId || 'A',
       format: q?.format !== undefined ? q.format : QueryFormat.Table,
-      rawSql: q?.rawSql || '',
+      rawSql: q?.rawSql || 'select 42',
       editorMode,
       dataset: "default",
       sql: q?.sql || {
