@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v3"
 	"github.com/marcboeker/go-duckdb"
-	"github.com/motherduck/duckdb-datasource/pkg/models"
+	"github.com/motherduckdb/grafana-duckdb-datasource/pkg/models"
 )
 
 type DuckDBDriver struct {

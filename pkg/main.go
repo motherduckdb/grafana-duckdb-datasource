@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/motherduck/duckdb-datasource/pkg/plugin"
+	"github.com/motherduckdb/grafana-duckdb-datasource/pkg/plugin"
 )
 
 func main() {

@@ -8,7 +8,8 @@ import (
 )
 
 func TestQueryData(t *testing.T) {
-	ds := Datasource{}
+	ds := NewDatasource(&DuckDBDriver{})
+	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{})
 
 	resp, err := ds.QueryData(
 		context.Background(),
