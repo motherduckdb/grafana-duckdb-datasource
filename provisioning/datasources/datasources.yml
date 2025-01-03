@@ -11,4 +11,4 @@ datasources:
     jsonData:
       path: '/resources'
     secureJsonData:
-      apiKey: 'api-key'
+      motherduckToken: 'motherduck-token'

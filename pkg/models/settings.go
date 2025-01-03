@@ -13,7 +13,7 @@ type PluginSettings struct {
 }
 
 type SecretPluginSettings struct {
-	ApiKey string `json:"apiKey"`
+	MotherDuckToken string `json:"motherduckToken"`
 }
 
 func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSettings, error) {
@@ -30,6 +30,6 @@ func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSetti
 
 func loadSecretPluginSettings(source map[string]string) *SecretPluginSettings {
 	return &SecretPluginSettings{
-		ApiKey: source["apiKey"],
+		MotherDuckToken: source["motherduckToken"],
 	}
 }

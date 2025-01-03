@@ -44,8 +44,8 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		return nil, err
 	}
 
-	if config.Secrets.ApiKey != "" {
-		os.Setenv("motherduck_token", config.Secrets.ApiKey)
+	if config.Secrets.MotherDuckToken != "" {
+		os.Setenv("motherduck_token", config.Secrets.MotherDuckToken)
 	}
 	// // join config as url parmaeters
 	// config, err := parseConfig(settings)
@@ -77,9 +77,16 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// queryString := strings.Join(parts, "&")
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
+		// read env variable GF_PATHS_HOME
+		homePath := os.Getenv("GF_PATHS_HOME")
+
 		bootQueries := []string{
 			"INSTALL 'motherduck'",
 			"LOAD 'motherduck'",
+		}
+
+		if homePath != "" {
+			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"'")
 		}
 
 		for _, query := range bootQueries {
@@ -125,7 +132,7 @@ func (d *DuckDBDriver) Converters() []sqlutil.Converter {
 	return GetConverterList()
 }
 
-// Originally from https://github.com/snakedotdev/grafana-duckdb-datasource
+// From https://github.com/snakedotdev/grafana-duckdb-datasource
 // Apache 2.0 Licensed
 // Copyright snakedotdev
 // Modified from original version
