@@ -1,35 +1,143 @@
-# Grafana data source plugin template
+# Grafana DuckDB Data Source Plugin
 
-This template is a starting point for building a Data Source Plugin for Grafana.
+The DuckDB data source plugin lets you query and visualize DuckDB data in Grafana. DuckDB is an in-process SQL OLAP database management system that provides fast analytics on local files. DuckDB's SQL dialect is derived from PostgreSQL so this plugin works similarly to the Grafana Postgres plugin and works for most SQL queries that would work in Postgres. 
 
-## What are Grafana data source plugins?
+The plugin is maintained by [MotherDuck](https://motherduck.com), a data platform that provides a cloud-based serverless DuckDB as a service, with additional features like data sharing, read scaling and more.
 
-Grafana supports a wide range of data sources, including Prometheus, MySQL, and even Datadog. There’s a good chance you can already visualize metrics from the systems you have set up. In some cases, though, you already have an in-house metrics solution that you’d like to add to your Grafana dashboards. Grafana Data Source Plugins enables integrating such solutions with Grafana.
+## Version Compatibility
+Requires Grafana Version 10.4.0 or later.
 
-## Getting started
+## Screenshots
 
-### Backend
+![Query Editor](./ui-example.png)
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/developers/plugin-tools/introduction/grafana-plugin-sdk-for-go) dependency to the latest minor version:
 
-   ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
-   go mod tidy
-   ```
+## Features
 
-2. Build backend plugin binaries for Linux, Windows and Darwin:
+- Query editor with syntax highlighting and auto-completion.
+- Import data from various file formats (CSV, Parquet, JSON) through DuckDB extensions.
+- Automatically reload the DuckDB file when the file has changed, allowing for data updates via hot-swapping the file.
+- Connect to and query data in MotherDuck. 
 
-   ```bash
-   mage -v
-   ```
+## Installation
 
-3. List all available Mage targets for additional commands:
+Download the plugin for your (OS, architecture) from the [releases page](https://github.com/motherduckdb/grafana-duckdb-datasource/releases). 
 
-   ```bash
-   mage -l
-   ```
+Since the plugin is currently unsigned, modify the grafana.ini file to allow unsigned plugins:
 
-### Frontend
+```ini
+...
+allow_loading_unsigned_plugins = grafana-duckdb-datasource
+...
+
+```
+
+Then, move the plugin zip to the Grafana plugins directory and unzip it:
+
+
+```bash
+mv grafana-duckdb-datasource-<version>.zip
+unzip grafana-duckdb-datasource-<version>.zip -d YOUR_PLUGIN_DIR/grafana-duckdb-datasource
+```
+
+Finally, restart the Grafana server.
+
+
+## Configuration
+
+### Data Source Options
+
+| Name              | Description                                           | Required |
+|-------------------|-------------------------------------------------------|----------|
+| Path             | Path to DuckDB database file, if empty, connects to duckDB in in-memory mode.        | Yes      |
+| MotherDuck Token | Token for MotherDuck API access                       | No       |
+
+### Query Editor Options
+
+The query editor supports standard SQL syntax and includes special Grafana macros for time range filtering and variable interpolation.
+
+### Macros
+
+| Macro                | Description                                        | Example |
+|---------------------|----------------------------------------------------|---------|
+| $__timeFilter       | Adds a time range filter using the dashboard's time range | `WHERE $__timeFilter(time_column)` |
+| $__timeFrom         | Start of the dashboard time range                  | `WHERE time_column > $__timeFrom` |
+| $__timeTo           | End of the dashboard time range                    | `WHERE time_column < $__timeTo` |
+| $__interval         | Dashboard time range interval                      | `GROUP BY time_bucket($__interval, time_column)` |
+| $__unixEpochFilter  | Time range filter for Unix timestamps              | `WHERE $__unixEpochFilter(timestamp_column)` |
+
+
+## Query Examples
+
+### Time Series Data
+
+```sql
+SELECT
+  time_bucket($__interval, timestamp) AS time,
+  avg(value) as average,
+  max(value) as maximum
+FROM metrics
+WHERE $__timeFilter(timestamp)
+GROUP BY 1
+ORDER BY 1
+```
+
+### Table Query
+
+```sql
+SELECT
+  name,
+  value,
+  timestamp
+FROM metrics
+WHERE $__timeFilter(timestamp)
+LIMIT 100
+```
+
+## File Import Support
+
+Through a rich eacosystem of extensions, DuckDB supports reading data from various file formats:
+
+```sql
+-- CSV import
+SELECT * FROM read_csv_auto('path/to/file.csv');
+
+-- Parquet import
+SELECT * FROM read_parquet('path/to/file.parquet');
+
+-- JSON import
+SELECT * FROM read_json_auto('path/to/file.json');
+```
+
+## Known Issues
+
+### Updating data in the DuckDB file
+DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#handling-concurrency) does not allow multiple processes to attach the same DuckDB database file at the same time, if at least one of them requires read-write access. This means another process cannot connect to the same DuckDB database file to write to it while Grafana has it as a data source, so real time updates t. There are a few ways to work around this:
+  - Copy the DuckDB file for updates, then copy the updated DuckDB file to overwrite the original file. The plugin will automatically reload the file when it detects a change. 
+  - Write to other file formats, , and read using DuckDB extensions. Note that this may not directly querying the DuckDB file.
+  - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana at the same time.
+
+## Local Development
+
+### Prerequisites
+
+- Node.js (v14+)
+- Go (v1.21+), Mage, gcc (building the backend requires CGO)
+
+### Building Locally
+
+#### Backend
+
+To build the backend plugin binary for your platform, run:
+
+```bash 
+mage -v build:<platform> build:GenerateManifestFile
+```
+possible values for `<platform>` are: `Linux`, `Windows`, `Darwin`, `DarwinARM64`, `LinuxARM64`, `LinuxARM`.
+
+Note: There's no clear way to cross-compile the plugin since it involves cross-compiling DuckDB via CGO.
+
+#### Frontend
 
 1. Install dependencies
 
@@ -85,49 +193,10 @@ Grafana supports a wide range of data sources, including Prometheus, MySQL, and 
    npm run lint:fix
    ```
 
-# Distributing your plugin
+## Links
 
-When distributing a Grafana plugin either within the community or privately the plugin must be signed so the Grafana application can verify its authenticity. This can be done with the `@grafana/sign-plugin` package.
+- [DuckDB Documentation](https://duckdb.org/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [MotherDuck Documentation](https://motherduck.com/docs)
+- [Plugin Development Guide](https://grafana.com/docs/grafana/latest/developers/plugins/)
 
-_Note: It's not necessary to sign a plugin during development. The docker development environment that is scaffolded with `@grafana/create-plugin` caters for running the plugin without a signature._
-
-## Initial steps
-
-Before signing a plugin please read the Grafana [plugin publishing and signing criteria](https://grafana.com/legal/plugins/#plugin-publishing-and-signing-criteria) documentation carefully.
-
-`@grafana/create-plugin` has added the necessary commands and workflows to make signing and distributing a plugin via the grafana plugins catalog as straightforward as possible.
-
-Before signing a plugin for the first time please consult the Grafana [plugin signature levels](https://grafana.com/legal/plugins/#what-are-the-different-classifications-of-plugins) documentation to understand the differences between the types of signature level.
-
-1. Create a [Grafana Cloud account](https://grafana.com/signup).
-2. Make sure that the first part of the plugin ID matches the slug of your Grafana Cloud account.
-   - _You can find the plugin ID in the `plugin.json` file inside your plugin directory. For example, if your account slug is `acmecorp`, you need to prefix the plugin ID with `acmecorp-`._
-3. Create a Grafana Cloud API key with the `PluginPublisher` role.
-4. Keep a record of this API key as it will be required for signing a plugin
-
-## Signing a plugin
-
-### Using Github actions release workflow
-
-If the plugin is using the github actions supplied with `@grafana/create-plugin` signing a plugin is included out of the box. The [release workflow](./.github/workflows/release.yml) can prepare everything to make submitting your plugin to Grafana as easy as possible. Before being able to sign the plugin however a secret needs adding to the Github repository.
-
-1. Please navigate to "settings > secrets > actions" within your repo to create secrets.
-2. Click "New repository secret"
-3. Name the secret "GRAFANA_API_KEY"
-4. Paste your Grafana Cloud API key in the Secret field
-5. Click "Add secret"
-
-#### Push a version tag
-
-To trigger the workflow we need to push a version tag to github. This can be achieved with the following steps:
-
-1. Run `npm version <major|minor|patch>`
-2. Run `git push origin main --follow-tags`
-
-## Learn more
-
-Below you can find source code for existing app plugins and other related documentation.
-
-- [Basic data source plugin example](https://github.com/grafana/grafana-plugin-examples/tree/master/examples/datasource-basic#readme)
-- [`plugin.json` documentation](https://grafana.com/developers/plugin-tools/reference-plugin-json)
-- [How to sign a plugin?](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin)
