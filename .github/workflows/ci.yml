@@ -142,10 +142,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: all-artifacts
+
       - name: Prepare dist directory
         run: |
           mkdir -p dist
           cp -r all-artifacts/*/* dist/
+
       - uses: magefile/mage-action@v3
         with:
           version: latest
@@ -283,11 +285,7 @@ jobs:
       - name: Download backend dist directory
         run: |
           mkdir -p dist
-          ls all-artifacts
-          ls all-artifacts/*/
-          ls dist
           cp -r all-artifacts/*/* dist/
-
 
       - name: Execute permissions on binary
         if: needs.build.outputs.has-backend == 'true'
