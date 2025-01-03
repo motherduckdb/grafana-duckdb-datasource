@@ -69,10 +69,12 @@ jobs:
 
         run: |
           cat > run.sh << 'EOF'
+          !#/bin/sh
           mage coverage
-            mage -v build:LinuxARM64
+          mage -v build:LinuxARM64
           EOF
 
+          cat run.sh
           chmod +x run.sh
           docker build --platform linux/arm64  -t go-arm64 .
           docker run --platform linux/arm64 -v `pwd`:/repo --name go-arm64 go-arm64 ./run.sh
