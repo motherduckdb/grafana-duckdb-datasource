@@ -70,7 +70,7 @@ jobs:
         run: |
           cat > run.sh << 'EOF'
           mage coverage
-          mage -v build:LinuxARM64
+            mage -v build:LinuxARM64
           EOF
 
           chmod +x run.sh
@@ -143,7 +143,7 @@ jobs:
       - name: Prepare dist directory
         run: |
           mkdir -p dist
-          cp -r all-artifacts/final-dist/* dist/
+          cp -r all-artifacts/*/* dist/
       - uses: magefile/mage-action@v3
         with:
           version: latest
@@ -205,10 +205,7 @@ jobs:
       - name: Download backend dist directory
         run: |
           mkdir -p dist
-          ls all-artifacts
-          ls all-artifacts/*/
-          ls dist
-          cp -r all-artifacts/*/* dist/
+          cp -r all-artifacts/final-dist/* dist/
 
       - name: Check for E2E
         id: check-for-e2e
