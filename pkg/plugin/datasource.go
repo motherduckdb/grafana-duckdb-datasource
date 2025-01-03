@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -23,7 +22,12 @@ var (
 // NewDatasource creates a new `SQLDatasource`.
 // It uses the provided settings argument to call the ds.Driver to connect to the SQL server
 func (ds *SQLDatasourceWithDebug) NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	return ds.SQLDatasource.NewDatasource(ctx, settings)
+	newSqlDs, err := ds.SQLDatasource.NewDatasource(ctx, settings)
+	if err != nil {
+		return nil, err
+	}
+	ds.SQLDatasource = newSqlDs.(*sqlds.SQLDatasource)
+	return ds, nil
 }
 
 // SQLDatasourceWithDebug
@@ -53,21 +57,6 @@ func (d *SQLDatasourceWithDebug) Dispose() {
 // The QueryDataResponse contains a map of RefID to the response for each query, and each response
 // contains Frames ([]*Frame).
 func (d *SQLDatasourceWithDebug) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-	var wg = sync.WaitGroup{}
-
-	wg.Add(len(req.Queries))
-
-	// Execute each query and store the results by query RefID
-	for _, q := range req.Queries {
-		go func(query backend.DataQuery) {
-			// log query
-			backend.Logger.Info("Going to query", "query", query)
-			wg.Done()
-		}(q)
-	}
-
-	wg.Wait()
-
 	response, err := d.SQLDatasource.QueryData(ctx, req)
 
 	return response, err
