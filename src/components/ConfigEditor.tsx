@@ -20,50 +20,50 @@ export function ConfigEditor(props: Props) {
   };
 
   // Secure field (only sent to the backend)
-  const onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const onMotherDuckTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
       ...options,
       secureJsonData: {
-        apiKey: event.target.value,
+        motherDuckToken: event.target.value,
       },
     });
   };
 
-  const onResetAPIKey = () => {
+  const onResetMotherDuckToken = () => {
     onOptionsChange({
       ...options,
       secureJsonFields: {
         ...options.secureJsonFields,
-        apiKey: false,
+        motherDuckToken: false,
       },
       secureJsonData: {
         ...options.secureJsonData,
-        apiKey: '',
+        motherDuckToken: '',
       },
     });
   };
 
   return (
     <>
-      <InlineField label="Path" labelWidth={14} interactive tooltip={'Json field returned to frontend'}>
+      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'Json field returned to frontend'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
           value={jsonData.path}
-          placeholder="Enter the path, e.g. /api/v1"
+          placeholder="Enter the path to the duckdb file, or :memory: for in-memory database."
           width={40}
         />
       </InlineField>
-      <InlineField label="API Key" labelWidth={14} interactive tooltip={'Secure json field (backend only)'}>
+      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'Secure json field (backend only)'}>
         <SecretInput
           required
-          id="config-editor-api-key"
-          isConfigured={secureJsonFields.apiKey}
-          value={secureJsonData?.apiKey}
-          placeholder="Enter your API key"
+          id="config-editor-md-token"
+          isConfigured={secureJsonFields.motherDuckToken}
+          value={secureJsonData?.motherDuckToken}
+          placeholder="Enter your MotherDuck token"
           width={40}
-          onReset={onResetAPIKey}
-          onChange={onAPIKeyChange}
+          onReset={onResetMotherDuckToken}
+          onChange={onMotherDuckTokenChange}
         />
       </InlineField>
     </>

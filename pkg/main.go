@@ -8,8 +8,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/sqlds/v3"
-	"github.com/motherduck/duckdb-datasource/pkg/plugin"
+	"github.com/motherduckdb/grafana-duckdb-datasource/pkg/plugin"
 )
 
 func main() {
@@ -22,13 +21,13 @@ func main() {
 	// ID). When datasource configuration changed Dispose method will be called and
 	// new datasource instance created using NewSampleDatasource factory.
 
-	if err := datasource.Manage("motherduck-duckdb-datasource", datasourceFactory, datasource.ManageOpts{}); err != nil {
+	if err := datasource.Manage("grafana-duckdb-datasource", datasourceFactory, datasource.ManageOpts{}); err != nil {
 		log.DefaultLogger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
 func datasourceFactory(ctx context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	ds := sqlds.NewDatasource(&plugin.DuckDBDriver{})
+	ds := plugin.NewDatasource(&plugin.DuckDBDriver{})
 	return ds.NewDatasource(ctx, s)
 }

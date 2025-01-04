@@ -149,11 +149,13 @@ export class DuckDBDataSource extends SqlDatasource {
 
   async fetchTables(): Promise<string[]> {
     const tables = await this.runSql<{ table: string[] }>(showTablesQuery(), { refId: 'tables' });
+    console.log("fetched tables", tables);
     return tables.fields.table?.values.flat() ?? [];
   }
 
   async fetchFields(query: SQLQuery, order?: boolean): Promise<SQLSelectableValue[]> {
     const { table } = query;
+    console.log("fetching fields for table", table);
     if (table === undefined) {
       // if no table-name, we are not able to query for fields
       return [];

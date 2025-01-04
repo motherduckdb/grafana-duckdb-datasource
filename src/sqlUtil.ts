@@ -64,9 +64,6 @@ export function getFieldConfig(type: string): { raqbFieldType: RAQBFieldTypes; i
     }
     case 'timestamp':
     case 'timestamp with time zone':
-    case 'timestamp without time zone': {
-      return { raqbFieldType: 'datetime', icon: 'clock-nine' };
-    }
     default:
       return { raqbFieldType: 'text', icon: 'text' };
   }

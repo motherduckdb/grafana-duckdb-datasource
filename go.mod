@@ -1,4 +1,4 @@
-module github.com/motherduck/duckdb-datasource
+module github.com/motherduckdb/grafana-duckdb-datasource
 
 go 1.23
 
