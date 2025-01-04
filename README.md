@@ -2,7 +2,7 @@
 
 The DuckDB data source plugin lets you query and visualize DuckDB data in Grafana. DuckDB is an in-process SQL OLAP database management system that provides fast analytics on local files. DuckDB's SQL dialect is derived from PostgreSQL so this plugin works similarly to the Grafana Postgres plugin and works for most SQL queries that would work in Postgres. 
 
-The plugin is maintained by [MotherDuck](https://motherduck.com), a data platform that provides a cloud-based serverless DuckDB as a service, with additional features like data sharing, read scaling and more.
+The plugin is built and maintained by [MotherDuck](https://motherduck.com), a data platform that provides a cloud-based serverless DuckDB as a service, with additional features like data sharing, read scaling and more.
 
 ![Query Editor](./ui-example.png)
 
@@ -26,7 +26,7 @@ Since the plugin is currently unsigned, modify the grafana.ini file to allow uns
 
 ```ini
 ...
-allow_loading_unsigned_plugins = grafana-duckdb-datasource
+allow_loading_unsigned_plugins = motherduck-duckdb-datasource
 ...
 
 ```
@@ -35,8 +35,8 @@ Then, unzip the plugin and move it to the Grafana plugins directory:
 
 
 ```bash
-mv grafana-duckdb-datasource-<version>.zip
-unzip grafana-duckdb-datasource-<version>.zip -d YOUR_PLUGIN_DIR/grafana-duckdb-datasource
+mv motherduck-duckdb-datasource-<version>.zip
+unzip motherduck-duckdb-datasource-<version>.zip -d YOUR_PLUGIN_DIR/motherduck-duckdb-datasource
 ```
 
 Finally, restart the Grafana server.

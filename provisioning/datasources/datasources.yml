@@ -2,7 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: 'inmemory-duckdb-datasource'
-    type: 'grafana-duckdb-datasource'
+    type: 'motherduck-duckdb-datasource'
     access: proxy
     isDefault: false
     orgId: 1
