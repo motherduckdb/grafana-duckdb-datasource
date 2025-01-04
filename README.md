@@ -4,12 +4,11 @@ The DuckDB data source plugin lets you query and visualize DuckDB data in Grafan
 
 The plugin is maintained by [MotherDuck](https://motherduck.com), a data platform that provides a cloud-based serverless DuckDB as a service, with additional features like data sharing, read scaling and more.
 
+![Query Editor](./ui-example.png)
+
+
 ## Version Compatibility
 Requires Grafana Version 10.4.0 or later.
-
-## Screenshots
-
-![Query Editor](./ui-example.png)
 
 
 ## Features
@@ -32,7 +31,7 @@ allow_loading_unsigned_plugins = grafana-duckdb-datasource
 
 ```
 
-Then, move the plugin zip to the Grafana plugins directory and unzip it:
+Then, unzip the plugin and move it to the Grafana plugins directory:
 
 
 ```bash
@@ -112,7 +111,7 @@ SELECT * FROM read_json_auto('path/to/file.json');
 ## Known Issues
 
 ### Updating data in the DuckDB file
-DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#handling-concurrency) does not allow multiple processes to attach the same DuckDB database file at the same time, if at least one of them requires read-write access. This means another process cannot connect to the same DuckDB database file to write to it while Grafana has it as a data source, so real time updates t. There are a few ways to work around this:
+DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#handling-concurrency) does not allow multiple processes to attach the same DuckDB database file at the same time, if at least one of them requires read-write access. This means another process cannot connect to the same DuckDB database file to write to it while Grafana has it as a data source. There are a few ways to work around this:
   - Copy the DuckDB file for updates, then copy the updated DuckDB file to overwrite the original file. The plugin will automatically reload the file when it detects a change. 
   - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
   - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
@@ -121,7 +120,7 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
 
 ### Prerequisites
 
-- Node.js (v14+)
+- Node.js (v20+)
 - Go (v1.21+), Mage, gcc (building the backend requires CGO)
 
 ### Building Locally
