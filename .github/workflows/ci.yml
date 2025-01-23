@@ -133,7 +133,7 @@ jobs:
           path: dist/
 
   generate-manifest:
-    needs: [build-linux-amd64, build-macos-arm64, build-windows]
+    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
