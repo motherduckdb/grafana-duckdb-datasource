@@ -1,4 +1,4 @@
-module github.com/motherduckdb/grafana-duckdb-datasource/cmd/go-duckdb-helper
+module github.com/motherduckdb/grafana-duckdb-datasource/cmd/preinstall-extensions
 
 go 1.23
 

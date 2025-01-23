@@ -1,3 +1,8 @@
+// From https://github.com/snakedotdev/grafana-duckdb-datasource
+// Apache 2.0 Licensed
+// Copyright snakedotdev
+// Modified from original version
+
 package main
 
 import (
@@ -13,8 +18,8 @@ import (
 
 func main() {
 	var (
-		sqlCmd     = flag.String("s", "", "SQL command to execute (multiple commands can be separated by semicolons)")
-		dbPath     = flag.String("db", "", "Path to DuckDB database file (empty for in-memory)")
+		sqlCmd = flag.String("s", "", "SQL command to execute (multiple commands can be separated by semicolons)")
+		dbPath = flag.String("db", "", "Path to DuckDB database file (empty for in-memory)")
 	)
 
 	flag.Parse()
@@ -65,4 +70,4 @@ func main() {
 	}
 
 	fmt.Println("All commands executed successfully")
-} 
+}

@@ -57,36 +57,6 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		os.Setenv("motherduck_token", config.Secrets.MotherDuckToken)
 	}
 
-	// // join config as url parmaeters
-	// config, err := parseConfig(settings)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// // Create a slice to hold the URL-encoded key-value pairs
-	// var parts []string
-	// var dbPath string
-	// // Iterate through the map
-	// for key, value := range config {
-	// 	if key == "path" {
-	// 		dbPath = value
-	// 		continue
-	// 	} else if key == "apiKey" {
-	// 	}
-
-	// 	// URL-encode the key and the value
-	// 	encodedKey := url.QueryEscape(key)
-	// 	encodedValue := url.QueryEscape(value)
-
-	// 	// Append the encoded key-value pair to the slice
-	// 	parts = append(parts, fmt.Sprintf("%s=%s", encodedKey, encodedValue))
-	// }
-
-	// Join all parts with '&' to form the final query string
-	// queryString := strings.Join(parts, "&")
-	// dbString := strings.Join([]string{dbPath, queryString}, "?")
-
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{}
 
