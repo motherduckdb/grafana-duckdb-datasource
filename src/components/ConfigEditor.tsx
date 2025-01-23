@@ -1,5 +1,5 @@
 import React, { ChangeEvent } from 'react';
-import { InlineField, Input, SecretInput } from '@grafana/ui';
+import { InlineField, Input, SecretInput, TextArea } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { DuckDBDataSourceOptions, SecureJsonData } from '../types';
 
@@ -19,6 +19,17 @@ export function ConfigEditor(props: Props) {
     });
   };
 
+  const onInitSqlChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        initSql: event.target.value,
+      },
+    });
+  };
+
+
   // Secure field (only sent to the backend)
   const onMotherDuckTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
@@ -33,11 +44,9 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({
       ...options,
       secureJsonFields: {
-        ...options.secureJsonFields,
         motherDuckToken: false,
       },
       secureJsonData: {
-        ...options.secureJsonData,
         motherDuckToken: '',
       },
     });
@@ -45,16 +54,27 @@ export function ConfigEditor(props: Props) {
 
   return (
     <>
-      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'Json field returned to frontend'}>
+      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'path to DuckDB file'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
           value={jsonData.path}
-          placeholder="Enter the path to the duckdb file, or :memory: for in-memory database."
+          placeholder="Enter the path to the duckdb file, or leave blank for in-memory database."
           width={40}
         />
       </InlineField>
-      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'Secure json field (backend only)'}>
+      <InlineField label="Init SQL" labelWidth={20} interactive
+                     tooltip={'(Optional) SQL to run when connection is established'}>
+          <TextArea
+              id="config-editor-init-sql"
+              onChange={onInitSqlChange}
+              value={jsonData.initSql || ''}
+              placeholder="e.g. INSTALL 'httpfs'; LOAD 'httpfs';"
+              width={60}
+              rows={5}
+          />
+      </InlineField>
+      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'MotherDuck Token'}>
         <SecretInput
           required
           id="config-editor-md-token"
@@ -66,6 +86,8 @@ export function ConfigEditor(props: Props) {
           onChange={onMotherDuckTokenChange}
         />
       </InlineField>
+
+
     </>
   );
 }

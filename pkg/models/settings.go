@@ -9,6 +9,7 @@ import (
 
 type PluginSettings struct {
 	Path    string                `json:"path"`
+	InitSql string                `json:"initSql"`
 	Secrets *SecretPluginSettings `json:"-"`
 }
 
@@ -22,7 +23,6 @@ func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSetti
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal PluginSettings json: %w", err)
 	}
-
 	settings.Secrets = loadSecretPluginSettings(source.DecryptedSecureJSONData)
 
 	return &settings, nil
@@ -30,6 +30,6 @@ func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSetti
 
 func loadSecretPluginSettings(source map[string]string) *SecretPluginSettings {
 	return &SecretPluginSettings{
-		MotherDuckToken: source["motherduckToken"],
+		MotherDuckToken: source["motherDuckToken"],
 	}
 }
