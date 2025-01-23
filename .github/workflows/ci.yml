@@ -241,7 +241,6 @@ jobs:
           echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
 
       - name: Add execute permissions on binary
-        if: needs.build.outputs.has-backend == 'true'
         run: |
           chmod +x ./dist/gpx_*
 
