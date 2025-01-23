@@ -9,6 +9,7 @@ import (
 
 type PluginSettings struct {
 	Path    string                `json:"path"`
+	InitSql string                `json:"initSql"`
 	Secrets *SecretPluginSettings `json:"-"`
 }
 

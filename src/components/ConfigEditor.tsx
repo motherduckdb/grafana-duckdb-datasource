@@ -1,5 +1,5 @@
 import React, { ChangeEvent } from 'react';
-import { InlineField, Input, SecretInput } from '@grafana/ui';
+import { InlineField, Input, SecretInput, TextArea } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { DuckDBDataSourceOptions, SecureJsonData } from '../types';
 
@@ -18,6 +18,17 @@ export function ConfigEditor(props: Props) {
       },
     });
   };
+
+  const onInitSqlChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        initSql: event.target.value,
+      },
+    });
+  };
+
 
   // Secure field (only sent to the backend)
   const onMotherDuckTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +56,7 @@ export function ConfigEditor(props: Props) {
 
   return (
     <>
-      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'Json field returned to frontend'}>
+      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'path to DuckDB file'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
@@ -54,7 +65,18 @@ export function ConfigEditor(props: Props) {
           width={40}
         />
       </InlineField>
-      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'Secure json field (backend only)'}>
+      <InlineField label="Init SQL" labelWidth={18} interactive
+                     tooltip={'(Optional) SQL to run when connection is established'}>
+          <TextArea
+              id="config-editor-init-sql"
+              onChange={onInitSqlChange}
+              value={jsonData.initSql || ''}
+              placeholder="INSTALL 'httpfs'; LOAD 'httpfs';"
+              width={40}
+              rows={5}
+          />
+      </InlineField>
+      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'MotherDuck Token'}>
         <SecretInput
           required
           id="config-editor-md-token"
@@ -66,6 +88,8 @@ export function ConfigEditor(props: Props) {
           onChange={onMotherDuckTokenChange}
         />
       </InlineField>
+
+
     </>
   );
 }

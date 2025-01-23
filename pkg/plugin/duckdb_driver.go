@@ -88,18 +88,21 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// dbString := strings.Join([]string{dbPath, queryString}, "?")
 
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
-
 		bootQueries := []string{}
 
 		if strings.HasPrefix(config.Path, "md:") {
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 		}
 
-		// read env variable GF_PATHS_HOME
+		// read env variable GF_PATHS_HOME and use it as the home directory for extension installation.
 		homePath := os.Getenv("GF_PATHS_HOME")
 		if homePath != "" {
 			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
 		}
+
+		// User defined init queries.
+		initSqls := strings.Split(config.InitSql, ";")
+		bootQueries = append(bootQueries, initSqls...)
 
 		for _, query := range bootQueries {
 			_, err = execer.ExecContext(context.Background(), query, nil)
