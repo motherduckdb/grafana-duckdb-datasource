@@ -101,8 +101,9 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		}
 
 		// User defined init queries.
-		initSqls := strings.Split(config.InitSql, ";")
-		bootQueries = append(bootQueries, initSqls...)
+		if strings.TrimSpace(config.InitSql) != "" {
+			bootQueries = append(bootQueries, config.InitSql)
+		}
 
 		for _, query := range bootQueries {
 			_, err = execer.ExecContext(context.Background(), query, nil)

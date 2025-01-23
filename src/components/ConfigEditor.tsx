@@ -44,11 +44,9 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({
       ...options,
       secureJsonFields: {
-        ...options.secureJsonFields,
         motherDuckToken: false,
       },
       secureJsonData: {
-        ...options.secureJsonData,
         motherDuckToken: '',
       },
     });
@@ -61,18 +59,18 @@ export function ConfigEditor(props: Props) {
           id="config-editor-path"
           onChange={onPathChange}
           value={jsonData.path}
-          placeholder="Enter the path to the duckdb file, or :memory: for in-memory database."
+          placeholder="Enter the path to the duckdb file, or leave blank for in-memory database."
           width={40}
         />
       </InlineField>
-      <InlineField label="Init SQL" labelWidth={18} interactive
+      <InlineField label="Init SQL" labelWidth={20} interactive
                      tooltip={'(Optional) SQL to run when connection is established'}>
           <TextArea
               id="config-editor-init-sql"
               onChange={onInitSqlChange}
               value={jsonData.initSql || ''}
-              placeholder="INSTALL 'httpfs'; LOAD 'httpfs';"
-              width={40}
+              placeholder="e.g. INSTALL 'httpfs'; LOAD 'httpfs';"
+              width={60}
               rows={5}
           />
       </InlineField>
