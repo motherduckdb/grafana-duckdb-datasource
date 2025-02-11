@@ -5,6 +5,7 @@
   "id": "motherduck-duckdb-datasource",
   "metrics": true,
   "backend": true,
+  "alerting": true,
   "executable": "gpx_duckdb_datasource",
   "info": {
     "description": "DuckDB and MotherDuck Data source for Grafana",
