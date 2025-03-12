@@ -133,9 +133,6 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
   - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
   - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
 
-### Alpine compatibility
-the default Grafana docker
-
 
 ## Local Development
 
