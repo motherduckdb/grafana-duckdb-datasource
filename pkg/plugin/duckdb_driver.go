@@ -64,8 +64,8 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 		}
 
-		// read env variable GF_PATHS_HOME and use it as the home directory for extension installation.
-		homePath := os.Getenv("GF_PATHS_HOME")
+		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
+		homePath := os.Getenv("GF_PATHS_DATA")
 		if homePath != "" {
 			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
 		}
