@@ -52,7 +52,7 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/motherduck-duckdb-datasource:/var/lib/grafana/plugins/motherduck-duckdb-datasource \
   -e "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=motherduck-duckdb-datasource" \
-  grafana/grafana-ubuntu:latest
+  grafana/grafana:latest-ubuntu
 ```
 
 This mounts your local plugin directory into the container and configures Grafana to allow loading the unsigned plugin. Remember to replace `$(pwd)/motherduck-duckdb-datasource` with the actual path to your plugin directory if needed.
