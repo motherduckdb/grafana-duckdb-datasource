@@ -150,7 +150,7 @@ jobs:
       - name: Prepare dist directory
         run: |
           mkdir -p dist
-          cp -r all-artifacts/*/* dist/
+          cp -r all-artifacts/*/gpx_duckdb_datasource* dist/
 
       - uses: magefile/mage-action@v3
         with:
