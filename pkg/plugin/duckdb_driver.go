@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -60,14 +61,19 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{}
 
-		if strings.HasPrefix(config.Path, "md:") {
-			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-		}
+		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
+		homePath := os.Getenv("GF_PATHS_DATA")
 
-		// read env variable GF_PATHS_HOME and use it as the home directory for extension installation.
-		homePath := os.Getenv("GF_PATHS_HOME")
 		if homePath != "" {
 			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
+			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
+		}
+
+		if strings.HasPrefix(config.Path, "md:") {
+			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 		}
 
 		// User defined init queries.

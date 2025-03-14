@@ -33,6 +33,8 @@ jobs:
         with:
           name: linux-amd64-dist
           path: dist/
+          retention-days: 5
+
 
   build-linux-arm64:
     runs-on: ubuntu-22.04
@@ -88,6 +90,8 @@ jobs:
         with:
           name: linux-arm64-dist
           path: dist/
+          retention-days: 5
+
 
   build-macos-arm64:
     runs-on: macos-latest
@@ -108,6 +112,7 @@ jobs:
         with:
           name: macos-arm64-dist
           path: dist/
+          retention-days: 5
 
   build-windows:
     runs-on: windows-latest
@@ -131,6 +136,7 @@ jobs:
         with:
           name: windows-dist
           path: dist/
+          retention-days: 5
 
   generate-manifest:
     needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-windows]
@@ -150,7 +156,7 @@ jobs:
       - name: Prepare dist directory
         run: |
           mkdir -p dist
-          cp -r all-artifacts/*/* dist/
+          cp -r all-artifacts/*/gpx_duckdb_datasource* dist/
 
       - uses: magefile/mage-action@v3
         with:
@@ -161,7 +167,7 @@ jobs:
         with:
           name: final-dist
           path: dist/
-
+          retention-days: 5
 
   build:
     name: Build, lint and unit tests
@@ -172,6 +178,7 @@ jobs:
       plugin-version: ${{ steps.metadata.outputs.plugin-version }}
       has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
       has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
+      archive-sha1sum: ${{ steps.metadata.outputs.archive-sha1sum }}
     env:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
@@ -235,10 +242,12 @@ jobs:
           export GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
           export GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
           export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
+          export GRAFANA_PLUGIN_ARTIFACT_SHA1SUM=${GRAFANA_PLUGIN_ARTIFACT}.sha1
 
           echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
           echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
           echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
+          echo "archive-sha1sum=${GRAFANA_PLUGIN_ARTIFACT_SHA1SUM}" >> $GITHUB_OUTPUT
 
       - name: Add execute permissions on binary
         run: |
@@ -248,14 +257,16 @@ jobs:
         id: package-plugin
         run: |
           mv dist ${{ steps.metadata.outputs.plugin-id }}
-          zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} 
+          zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
+          sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
+          mv ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
 
       - name: Archive Build
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
           path: ${{ steps.metadata.outputs.plugin-id }}
-          retention-days: 5
+
 
   resolve-versions:
     name: Resolve e2e images

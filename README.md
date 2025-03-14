@@ -42,6 +42,23 @@ unzip motherduck-duckdb-datasource-<version>.zip -d YOUR_PLUGIN_DIR/motherduck-d
 Finally, restart the Grafana server.
 
 
+### Running with Docker
+
+To run the plugin with a Grafana Docker container, you must use the Ubuntu-based Grafana image instead of the default Alpine-based one.  Use the following command to start a Grafana container with the plugin:
+
+```bash
+docker run -d \
+  --name=grafana \
+  -p 3000:3000 \
+  -v $(pwd)/motherduck-duckdb-datasource:/var/lib/grafana/plugins/motherduck-duckdb-datasource \
+  -e "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=motherduck-duckdb-datasource" \
+  grafana/grafana:latest-ubuntu
+```
+
+This mounts your local plugin directory into the container and configures Grafana to allow loading the unsigned plugin. Remember to replace `$(pwd)/motherduck-duckdb-datasource` with the actual path to your plugin directory if needed.
+
+
+
 ## Configuration
 
 ### Data Source Options
@@ -115,6 +132,7 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
   - Copy the DuckDB file for updates, then copy the updated DuckDB file to overwrite the original file. The plugin will automatically reload the file when it detects a change. 
   - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
   - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
+
 
 ## Local Development
 
