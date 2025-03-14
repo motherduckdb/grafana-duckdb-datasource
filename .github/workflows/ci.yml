@@ -35,7 +35,7 @@ jobs:
           path: dist/
           retention-days: 5
 
-          
+
   build-linux-arm64:
     runs-on: ubuntu-22.04
     steps:
@@ -254,13 +254,14 @@ jobs:
         id: package-plugin
         run: |
           mv dist ${{ steps.metadata.outputs.plugin-id }}
-          zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} 
+          zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
+          mv ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
 
       - name: Archive Build
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
-          path: ${{ steps.metadata.outputs.archive }}
+          path: ${{ steps.metadata.outputs.plugin-id }}
 
 
   resolve-versions:
