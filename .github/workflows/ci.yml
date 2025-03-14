@@ -178,6 +178,7 @@ jobs:
       plugin-version: ${{ steps.metadata.outputs.plugin-version }}
       has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
       has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
+      archive-sha1sum: ${{ steps.metadata.outputs.archive-sha1sum }}
     env:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
@@ -255,6 +256,7 @@ jobs:
         run: |
           mv dist ${{ steps.metadata.outputs.plugin-id }}
           zip -r ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
+          sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
           mv ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }}
 
       - name: Archive Build

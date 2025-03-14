@@ -65,9 +65,11 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		homePath := os.Getenv("GF_PATHS_DATA")
 
 		if homePath != "" {
-			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
 			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
 			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
 		}
 
 		if strings.HasPrefix(config.Path, "md:") {
