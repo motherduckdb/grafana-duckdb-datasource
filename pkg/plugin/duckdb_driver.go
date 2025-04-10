@@ -74,13 +74,13 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 
 		if strings.HasPrefix(path, "md:") {
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-		}
-
-		if !strings.HasPrefix(path, "md:") && config.Secrets.MotherDuckToken != "" {
+		} else if config.Secrets.MotherDuckToken != "" {
+			// Still need to install motherduck in order to set the config.
+			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 			bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 		}
 
-		// User defined init queries.
+		// Run other user defined init queries.
 		if strings.TrimSpace(config.InitSql) != "" {
 			bootQueries = append(bootQueries, config.InitSql)
 		}
