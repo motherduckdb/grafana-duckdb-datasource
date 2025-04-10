@@ -5,8 +5,8 @@ go 1.23.5
 toolchain go1.24.1
 
 require (
-	github.com/grafana/grafana-plugin-sdk-go v0.260.3
-	github.com/grafana/sqlds/v3 v3.2.0
+	github.com/grafana/grafana-plugin-sdk-go v0.274.0
+	github.com/grafana/sqlds/v3 v3.4.2
 	github.com/marcboeker/go-duckdb v1.8.3
 	github.com/mitchellh/mapstructure v1.5.0
 )
@@ -111,5 +111,3 @@ require (
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/grafana/grafana-plugin-sdk-go v0.260.3 => ./grafana-plugin-sdk-go

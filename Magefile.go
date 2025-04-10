@@ -9,3 +9,8 @@ import (
 )
 
 var Default = build.BuildAll
+
+var _ = build.SetBeforeBuildCallback(func(cfg build.Config) (build.Config, error) {
+	cfg.EnableCGo = true
+	return cfg, nil
+})
