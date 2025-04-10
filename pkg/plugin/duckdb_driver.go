@@ -53,12 +53,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	if strings.HasPrefix(config.Path, "md:") && config.Secrets.MotherDuckToken == "" {
 		return nil, &ConfigError{"MotherDuck Token is missing for motherduck connection"}
 	}
-
-	if config.Secrets.MotherDuckToken != "" {
-		os.Setenv("motherduck_token", config.Secrets.MotherDuckToken)
+	var path = config.Path
+	if strings.HasPrefix(config.Path, "md:") && config.Secrets.MotherDuckToken != "" {
+		path = config.Path + "?motherduck_token=" + config.Secrets.MotherDuckToken
 	}
 
-	connector, err := duckdb.NewConnector(config.Path, func(execer driver.ExecerContext) error {
+	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{}
 
 		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
@@ -72,8 +72,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
 		}
 
-		if strings.HasPrefix(config.Path, "md:") {
+		if strings.HasPrefix(path, "md:") {
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
+		}
+
+		if !strings.HasPrefix(path, "md:") && config.Secrets.MotherDuckToken != "" {
+			bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 		}
 
 		// User defined init queries.
