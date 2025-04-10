@@ -126,6 +126,6 @@ func (d *SQLDataSourceWrapper) QueryData(ctx context.Context, req *backend.Query
 // The main use case for these health checks is the test button on the
 // SQLDataSourceWrapper configuration page which allows users to verify that
 // a SQLDataSourceWrapper is working as expected.
-func (d *SQLDataSourceWrapper) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	return d.SQLDatasource.CheckHealth(context.Background(), req)
+func (d *SQLDataSourceWrapper) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+	return d.SQLDatasource.CheckHealth(ctx, req)
 }
