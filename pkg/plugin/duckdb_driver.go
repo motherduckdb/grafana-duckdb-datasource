@@ -32,6 +32,7 @@ func (e *ConfigError) Error() string {
 }
 
 type DuckDBDriver struct {
+	HasSetMotherDuckToken bool
 }
 
 // parse config from settings.JSONData
@@ -77,7 +78,10 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		} else if config.Secrets.MotherDuckToken != "" {
 			// Still need to install motherduck in order to set the config.
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-			bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+			if !d.HasSetMotherDuckToken {
+				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+				d.HasSetMotherDuckToken = true
+			}
 		}
 
 		// Run other user defined init queries.
