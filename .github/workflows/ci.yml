@@ -19,7 +19,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - uses: magefile/mage-action@v3
         with:
           version: latest
@@ -51,7 +51,7 @@ jobs:
       - name: Create temporary Dockerfile
         run: |
           cat > Dockerfile << 'EOF'
-          FROM arm64v8/golang:1.23
+          FROM arm64v8/golang:1.24
 
           RUN go install github.com/magefile/mage@latest
           RUN mage -init
@@ -101,7 +101,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - name: install mage
         run: |
           go install github.com/magefile/mage@latest
@@ -122,7 +122,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - uses: magefile/mage-action@v3
         with:
           version: latest
@@ -147,7 +147,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -215,7 +215,7 @@ jobs:
       - name: Setup Go environment
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
 
       - name: Download backend dist directory
         run: |
