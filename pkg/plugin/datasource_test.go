@@ -9,7 +9,7 @@ import (
 )
 
 func TestQueryData(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{})
+	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
 	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
 		JSONData: []byte(`{"path":""}`),
 	})

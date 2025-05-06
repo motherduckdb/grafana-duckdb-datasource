@@ -28,6 +28,6 @@ func main() {
 }
 
 func datasourceFactory(ctx context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	ds := plugin.NewDatasource(&plugin.DuckDBDriver{})
+	ds := plugin.NewDatasource(&plugin.DuckDBDriver{HasSetMotherDuckToken: false})
 	return ds.NewDatasource(ctx, s)
 }
