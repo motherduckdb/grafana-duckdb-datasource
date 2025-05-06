@@ -125,13 +125,17 @@ SELECT * FROM read_parquet('path/to/file.parquet');
 SELECT * FROM read_json_auto('path/to/file.json');
 ```
 
-## Known Issues
+## Known Issues and Suggestions for Workarounds
 
 ### Updating data in the DuckDB file
 DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#handling-concurrency) does not allow multiple processes to attach the same DuckDB database file at the same time, if at least one of them requires read-write access. This means another process cannot connect to the same DuckDB database file to write to it while Grafana has it as a data source. There are a few ways to work around this:
   - Copy the DuckDB file for updates, then copy the updated DuckDB file to overwrite the original file. The plugin will automatically reload the file when it detects a change. 
   - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
   - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
+
+### Connecting to MotherDuck
+
+If you are running the official Grafana docker image, having a DuckDB data source pointing to `md:` or `md:...` will not work due to file system permissions issues. As a workaround, leave the db path field blank, and in the `initSQL` section, add `ATTACH IF NOT EXISTS 'md:';`.
 
 
 ## Local Development
