@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -63,15 +62,13 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		bootQueries := []string{}
 
 		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
-		homePath := os.Getenv("GF_PATHS_DATA")
+		homePath := "/var/lib/grafana"
 
-		if homePath != "" {
-			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
-		}
+		bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+		extensionPath := filepath.Join(homePath, ".duckdb/extensions")
+		bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+		secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+		bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
 
 		if strings.HasPrefix(path, "md:") {
 			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
