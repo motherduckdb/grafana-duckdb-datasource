@@ -1,6 +1,6 @@
-import { test, expect, DashboardEditViewArgs } from '@grafana/plugin-e2e';
+import { test, expect } from '@grafana/plugin-e2e';
 
-test('custom variable query runner should return data when query is valid', async ({
+test('data source supports multiple query variables in one dashboard', async ({
     readProvisionedDashboard,
     selectors,
     gotoDashboardPage
