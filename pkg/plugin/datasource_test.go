@@ -33,7 +33,6 @@ func TestQueryData(t *testing.T) {
 	if len(resp.Responses) != 1 {
 		t.Fatal("QueryData must return a response")
 	}
-	fmt.Printf("%+v\n", resp.Responses)
 }
 
 func TestMultipleConcurrentRequests(t *testing.T) {
