@@ -61,7 +61,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		bootQueries := []string{}
 
-		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
+		// The home directory for extension installation.
 		homePath := "/var/lib/grafana"
 
 		bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
@@ -80,6 +80,9 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 				d.HasSetMotherDuckToken = true
 			}
 		}
+		// https://duckdb.org/docs/stable/operations_manual/securing_duckdb/overview.html
+		bootQueries = append(bootQueries, "SET disabled_filesystems = 'LocalFileSystem';")
+		bootQueries = append(bootQueries, "SET lock_configuration = true;")
 
 		// Run other user defined init queries.
 		if strings.TrimSpace(config.InitSql) != "" {
