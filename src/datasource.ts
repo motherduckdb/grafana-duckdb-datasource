@@ -207,6 +207,9 @@ export class DuckDBDataSource extends SqlDatasource {
   }
 
 
+  // Tweaked the implementation from SqlDataSource, this makes sure the refIds are distinct 
+  // so that queries for multiple query variables do not step on each other. 
+  // TODO: contribute the fix to @grafana/plugin-ui 
   async metricFindQuery(query: string, options?: MetricFindQueryOptions): Promise<MetricFindValue[]> {
     const rawSql = this.templateSrv.replace(
       query,
