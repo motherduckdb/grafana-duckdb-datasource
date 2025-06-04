@@ -59,7 +59,8 @@ jobs:
 
           RUN apt-get update && apt-get install -y \
               gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu
+              g++-aarch64-linux-gnu \
+              libstdc++-12-dev
         
           RUN rm -rf /var/lib/apt/lists/*
 
