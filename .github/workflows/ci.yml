@@ -52,15 +52,31 @@ jobs:
       - name: Create temporary Dockerfile
         run: |
           cat > Dockerfile << 'EOF'
-          FROM arm64v8/golang:1.24
+          FROM ubuntu:24.04
+
+          ENV GOLANG_VERSION=1.24.3
+          ENV GOPATH=/go
+          ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
+
+          RUN apt-get update && apt-get install -y \
+              wget \
+              curl \
+              git \
+              build-essential \
+              ca-certificates \
+              gcc-aarch64-linux-gnu \
+              g++-aarch64-linux-gnu
+              && rm -rf /var/lib/apt/lists/*
+
+          RUN wget -O go.tar.gz "https://go.dev/dl/go${GOLANG_VERSION}.linux-arm64.tar.gz" \
+              && tar -C /usr/local -xzf go.tar.gz \
+              && rm go.tar.gz
+
+          RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 755 "$GOPATH"
+          WORKDIR $GOPATH
 
           RUN go install github.com/magefile/mage@latest
           RUN mage -init
-
-          RUN apt-get update && apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu \
-              libstdc++-14-dev
         
           RUN rm -rf /var/lib/apt/lists/*
 
@@ -71,6 +87,7 @@ jobs:
           WORKDIR /repo
 
           EOF
+
 
       - name: Build and run Container
         shell: sh
