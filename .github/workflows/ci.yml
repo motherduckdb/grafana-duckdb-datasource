@@ -65,7 +65,7 @@ jobs:
               build-essential \
               ca-certificates \
               gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu
+              g++-aarch64-linux-gnu \
               && rm -rf /var/lib/apt/lists/*
 
           RUN wget -O go.tar.gz "https://go.dev/dl/go${GOLANG_VERSION}.linux-arm64.tar.gz" \
