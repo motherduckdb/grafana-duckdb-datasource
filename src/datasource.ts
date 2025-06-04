@@ -1,9 +1,9 @@
 import {  uniqBy } from 'lodash';
 // @ts-ignore
 import sqlFormatter from 'sql-formatter-plus';
-import { DataSourceInstanceSettings, ScopedVars, DataFrame, MetricFindValue, DataQueryRequest} from '@grafana/data';
+import { DataSourceInstanceSettings, ScopedVars, DataFrame, MetricFindValue, DataQueryRequest, TimeRange } from '@grafana/data';
 import { TemplateSrv, HealthCheckError, HealthStatus } from '@grafana/runtime';
-import { Aggregate, DB, ResponseParser, SQLOptions, SQLQuery, SQLSelectableValue, SqlDatasource, SqlQueryModel, LanguageDefinition } from '@grafana/plugin-ui';
+import { Aggregate, DB, ResponseParser, SQLOptions, SQLQuery, SQLSelectableValue, SqlDatasource, SqlQueryModel, LanguageDefinition, QueryFormat } from '@grafana/plugin-ui';
 import { applyQueryDefaults } from './queryDefaults';
 import { VariableFormatID } from '@grafana/schema';
 import { getFieldConfig, toRawSql } from './sqlUtil';
@@ -16,6 +16,43 @@ import {
   TableIdentifier,
 } from '@grafana/experimental';
 
+// Duplicated from https://github.com/grafana/plugin-ui/blob/main/src/datasource/SqlDatasource.ts
+
+export interface SearchFilterOptions {
+  searchFilter?: string;
+}
+interface MetricFindQueryOptions extends SearchFilterOptions {
+  range?: TimeRange;
+  variable?: { name: string };
+}
+
+const SEARCH_FILTER_VARIABLE = '__searchFilter';
+
+const containsSearchFilter = (query: string | unknown): boolean =>
+  query && typeof query === 'string' ? query.indexOf(SEARCH_FILTER_VARIABLE) !== -1 : false;
+
+const getSearchFilterScopedVar = (args: {
+  query: string;
+  wildcardChar: string;
+  options?: SearchFilterOptions;
+}): ScopedVars => {
+  const { query, wildcardChar } = args;
+  if (!containsSearchFilter(query)) {
+    return {};
+  }
+
+  let { options } = args;
+
+  options = options || { searchFilter: '' };
+  const value = options.searchFilter ? `${options.searchFilter}${wildcardChar}` : `${wildcardChar}`;
+
+  return {
+    __searchFilter: {
+      value,
+      text: '',
+    },
+  };
+};
 
 export function formatSQL(q: string) {
   return sqlFormatter.format(q).replace(/(\$ \{ .* \})|(\$ __)|(\$ \w+)/g, (m: string) => {
@@ -146,7 +183,6 @@ export class DuckDBDataSource extends SqlDatasource {
     return result;
   }
 
-
   async fetchTables(): Promise<string[]> {
     const tables = await this.runSql<{ table: string[] }>(showTablesQuery(), { refId: 'tables' });
     console.log("fetched tables", tables);
@@ -170,6 +206,33 @@ export class DuckDBDataSource extends SqlDatasource {
     return result;
   }
 
+
+  // Tweaked the implementation from SqlDataSource, this makes sure the refIds are distinct 
+  // so that queries for multiple query variables do not step on each other. 
+  // TODO: contribute the fix to @grafana/plugin-ui 
+  async metricFindQuery(query: string, options?: MetricFindQueryOptions): Promise<MetricFindValue[]> {
+    const rawSql = this.templateSrv.replace(
+      query,
+      getSearchFilterScopedVar({ query, wildcardChar: '%', options: options }),
+      this.interpolateVariable
+    );
+
+    let refId = 'tempvar';
+    if (options && options.variable && options.variable.name) {
+      refId = options.variable.name;
+    }
+
+    const interpolatedQuery: SQLQuery = {
+      refId: refId,
+      datasource: this.getRef(),
+      rawSql,
+      format: QueryFormat.Table,
+    };
+
+    const response = await (this as any).runMetaQuery(interpolatedQuery, options);
+    return this.getResponseParser().transformMetricFindResponse(response);
+  }
+  
   getSqlLanguageDefinition(db: DB): LanguageDefinition {
     if (this.sqlLanguageDefinition !== undefined) {
       return this.sqlLanguageDefinition;

@@ -1,0 +1,74 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "links": [],
+    "panels": [],
+    "preload": false,
+    "schemaVersion": 41,
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "1",
+            "value": "1"
+          },
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "42"
+          },
+          "definition": "select 1",
+          "label": "query0",
+          "name": "query0",
+          "options": [],
+          "query": "select 1",
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "duck",
+            "value": "duck"
+          },
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "42"
+          },
+          "definition": "select 'duck' as species",
+          "name": "species",
+          "options": [],
+          "query": "select 'duck' as species",
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "VariablesTestDashboard",
+    "uid": "99999",
+    "version": 5
+}
