@@ -13,7 +13,7 @@ permissions: read-all
 
 jobs:
   build-linux-amd64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +38,7 @@ jobs:
 
 
   build-linux-arm64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -141,7 +141,7 @@ jobs:
 
   generate-manifest:
     needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-windows]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -172,7 +172,7 @@ jobs:
 
   build:
     name: Build, lint and unit tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     needs: generate-manifest
     outputs:
       plugin-id: ${{ steps.metadata.outputs.plugin-id }}
@@ -271,7 +271,7 @@ jobs:
 
   resolve-versions:
     name: Resolve e2e images
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     timeout-minutes: 3
     needs: build
     if: ${{ needs.build.outputs.has-e2e == 'true' }}
@@ -292,7 +292,7 @@ jobs:
       matrix:
         GRAFANA_IMAGE: ${{fromJson(needs.resolve-versions.outputs.matrix)}}
     name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-25.04
     steps:
       - uses: actions/checkout@v4
 
