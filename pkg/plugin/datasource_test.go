@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 
@@ -11,9 +12,19 @@ import (
 )
 
 func TestQueryData(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
-	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(`{"path":""}`),
+	// Use different ddb file names for each test so there's different duckdb instances.
+	tmpFile, err := os.CreateTemp("", "test1_*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	os.Remove(tmpPath)
+	defer os.Remove(tmpPath)
+
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
+	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
 	})
 
 	resp, err := ds.QueryData(
@@ -36,10 +47,19 @@ func TestQueryData(t *testing.T) {
 }
 
 func TestMultipleConcurrentRequests(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
+	tmpFile, err := os.CreateTemp("", "test2_*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	os.Remove(tmpPath)
+	defer os.Remove(tmpPath)
+
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
-	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(`{"path":""}`),
+	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
 	})
 	if err != nil {
 		t.Error(err)
@@ -94,11 +114,20 @@ func TestMultipleConcurrentRequests(t *testing.T) {
 }
 
 func TestMultipleQueriesRequest(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test3_*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	os.Remove(tmpPath)
+	defer os.Remove(tmpPath)
+
 	numQueries := 23
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
-	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(`{"path":""}`),
+	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
 	})
 	if err != nil {
 		t.Error(err)
