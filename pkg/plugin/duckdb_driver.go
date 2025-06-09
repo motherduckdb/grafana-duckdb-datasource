@@ -65,14 +65,29 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		defer d.mu.Unlock()
 		bootQueries := []string{}
 		if !d.Initialized {
-			// The home directory for extension installation.
-			homePath := "/var/lib/grafana"
-			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
-			bootQueries = append(bootQueries, "INSTALL 'httpfs';", "LOAD 'httpfs';")
+			// Try to install httpfs with default directories first
+			_, err := execer.ExecContext(ctx, "INSTALL 'httpfs';", nil)
+			if err != nil {
+				// Only set custom directories if we get a permission error for /var/lib/grafana/
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "Permission denied") && strings.Contains(errMsg, "/var/lib/grafana/") {
+					homePath := "/var/lib/grafana"
+					if config.Path != "" && !strings.HasPrefix(config.Path, "md:") {
+						// For local databases, use the directory of the database file as home
+						homePath = filepath.Dir(config.Path)
+					}
+					bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+					extensionPath := filepath.Join(homePath, ".duckdb/extensions")
+					bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+					secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+					bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
+					bootQueries = append(bootQueries, "INSTALL 'httpfs';")
+				} else {
+					// Surface other errors as-is
+					return err
+				}
+			}
+			bootQueries = append(bootQueries, "LOAD 'httpfs';")
 
 			if strings.HasPrefix(path, "md:") {
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
