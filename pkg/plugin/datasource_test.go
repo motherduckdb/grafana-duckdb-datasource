@@ -23,8 +23,9 @@ func TestQueryData(t *testing.T) {
 	defer os.Remove(tmpPath)
 
 	ds := NewDatasource(&DuckDBDriver{Initialized: false})
+	pathJSON, _ := json.Marshal(tmpPath)
 	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
+		JSONData: []byte(fmt.Sprintf(`{"path":%s}`, pathJSON)),
 	})
 
 	resp, err := ds.QueryData(
@@ -58,8 +59,9 @@ func TestMultipleConcurrentRequests(t *testing.T) {
 
 	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
+	pathJSON, _ := json.Marshal(tmpPath)
 	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
+		JSONData: []byte(fmt.Sprintf(`{"path":%s}`, pathJSON)),
 	})
 	if err != nil {
 		t.Error(err)
@@ -126,8 +128,9 @@ func TestMultipleQueriesRequest(t *testing.T) {
 	numQueries := 23
 	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
+	pathJSON, _ := json.Marshal(tmpPath)
 	_, err = ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(fmt.Sprintf(`{"path":"%s"}`, tmpPath)),
+		JSONData: []byte(fmt.Sprintf(`{"path":%s}`, pathJSON)),
 	})
 	if err != nil {
 		t.Error(err)
