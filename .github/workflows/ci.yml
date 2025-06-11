@@ -115,6 +115,27 @@ jobs:
           path: dist/
           retention-days: 5
 
+  build-macos-amd64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: install mage
+        run: |
+          go install github.com/magefile/mage@latest
+          mage coverage
+          mage -v build:Darwin
+      - name: Upload macOS AMD64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-amd64-dist
+          path: dist/
+          retention-days: 5
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -140,7 +161,7 @@ jobs:
           retention-days: 5
 
   generate-manifest:
-    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-windows]
+    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-macos-amd64, build-windows]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
