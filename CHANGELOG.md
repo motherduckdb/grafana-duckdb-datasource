@@ -1,5 +1,10 @@
 # Changelog
 
+
+## 0.2.1
+- Fix multiple query variables.
+- Build the plugin for intel mac.
+
 ## 0.2.0
 
 - Bump duckdb to 1.2.2.
