@@ -11,7 +11,7 @@ import (
 )
 
 func TestQueryData(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
 		JSONData: []byte(`{"path":""}`),
 	})
@@ -36,7 +36,7 @@ func TestQueryData(t *testing.T) {
 }
 
 func TestMultipleConcurrentRequests(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
 	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
 		JSONData: []byte(`{"path":""}`),
@@ -95,7 +95,7 @@ func TestMultipleConcurrentRequests(t *testing.T) {
 
 func TestMultipleQueriesRequest(t *testing.T) {
 	numQueries := 23
-	ds := NewDatasource(&DuckDBDriver{HasSetMotherDuckToken: false})
+	ds := NewDatasource(&DuckDBDriver{Initialized: false})
 	ctx := context.Background()
 	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
 		JSONData: []byte(`{"path":""}`),

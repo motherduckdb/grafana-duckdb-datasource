@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -32,7 +33,8 @@ func (e *ConfigError) Error() string {
 }
 
 type DuckDBDriver struct {
-	HasSetMotherDuckToken bool
+	mu          sync.Mutex
+	Initialized bool
 }
 
 // parse config from settings.JSONData
@@ -60,41 +62,43 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	}
 
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
+		d.mu.Lock()
+		defer d.mu.Unlock()
 		bootQueries := []string{}
+		if !d.Initialized {
+			// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
+			homePath := os.Getenv("GF_PATHS_DATA")
 
-		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
-		homePath := os.Getenv("GF_PATHS_DATA")
+			if homePath != "" {
+				bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+				extensionPath := filepath.Join(homePath, ".duckdb/extensions")
+				bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+				secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+				bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
+			}
 
-		if homePath != "" {
-			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
-		}
-
-		if strings.HasPrefix(path, "md:") {
-			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-		} else if config.Secrets.MotherDuckToken != "" {
-			// Still need to install motherduck in order to set the config.
-			bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-			if !d.HasSetMotherDuckToken {
+			if strings.HasPrefix(path, "md:") {
+				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
+			} else if config.Secrets.MotherDuckToken != "" {
+				// Still need to install motherduck in order to set the config.
+				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
-				d.HasSetMotherDuckToken = true
 			}
+			// Run other user defined init queries.
+			if strings.TrimSpace(config.InitSql) != "" {
+				bootQueries = append(bootQueries, config.InitSql)
+			}
+
+			for _, query := range bootQueries {
+				// TODO: Fix context cancellation happening somewhere in the plugin.
+				_, err = execer.ExecContext(context.Background(), query, nil)
+				if err != nil {
+					return err
+				}
+			}
+			d.Initialized = true
 		}
 
-		// Run other user defined init queries.
-		if strings.TrimSpace(config.InitSql) != "" {
-			bootQueries = append(bootQueries, config.InitSql)
-		}
-
-		for _, query := range bootQueries {
-			_, err = execer.ExecContext(context.Background(), query, nil)
-			if err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 
