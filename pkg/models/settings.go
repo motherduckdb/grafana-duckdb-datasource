@@ -8,9 +8,10 @@ import (
 )
 
 type PluginSettings struct {
-	Path    string                `json:"path"`
-	InitSql string                `json:"initSql"`
-	Secrets *SecretPluginSettings `json:"-"`
+	Path          string                `json:"path"`
+	InitSql       string                `json:"initSql"`
+	DatabaseName  string                `json:"databaseName"`
+	Secrets       *SecretPluginSettings `json:"-"`
 }
 
 type SecretPluginSettings struct {
