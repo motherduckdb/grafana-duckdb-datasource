@@ -84,14 +84,13 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 			}
-			
-			// Run other user defined init queries.
-			if strings.TrimSpace(config.InitSql) != "" {
-				bootQueries = append(bootQueries, config.InitSql)
-			}
 			// Attach database if provided
 			if strings.TrimSpace(config.DatabaseName) != "" {
 				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+config.DatabaseName+";")
+			}
+			// Run other user defined init queries.
+			if strings.TrimSpace(config.InitSql) != "" {
+				bootQueries = append(bootQueries, config.InitSql)
 			}
 			for _, query := range bootQueries {
 				// TODO: Fix context cancellation happening somewhere in the plugin.
@@ -100,7 +99,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 					return err
 				}
 			}
-			
+
 			d.Initialized = true
 		}
 
