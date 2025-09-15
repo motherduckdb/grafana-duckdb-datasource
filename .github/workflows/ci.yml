@@ -357,6 +357,8 @@ jobs:
 
       - name: Run Playwright tests
         id: run-tests
+        env:
+          GRAFANA_VERSION: ${{ matrix.GRAFANA_IMAGE.VERSION }}
         run: npm run e2e
 
       - name: Docker logs
