@@ -84,9 +84,20 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 			}
-			// Attach database if provided
+			// Attach database(s) if provided. Accept comma-separated list.
 			if strings.TrimSpace(config.DatabaseName) != "" {
-				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+config.DatabaseName+";")
+				parts := strings.Split(config.DatabaseName, ",")
+				for _, p := range parts {
+					db := strings.TrimSpace(p)
+					if db == "" {
+						continue
+					}
+					// If not quoted, wrap in single quotes and escape internal quotes
+					if !((strings.HasPrefix(db, "'") && strings.HasSuffix(db, "'")) || (strings.HasPrefix(db, "\"") && strings.HasSuffix(db, "\""))) {
+						db = "'" + strings.ReplaceAll(db, "'", "''") + "'"
+					}
+					bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
+				}
 			}
 			// Run other user defined init queries.
 			if strings.TrimSpace(config.InitSql) != "" {

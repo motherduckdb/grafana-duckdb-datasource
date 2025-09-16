@@ -73,12 +73,12 @@ export function ConfigEditor(props: Props) {
           width={40}
         />
       </InlineField>
-      <InlineField label="Database name" labelWidth={20} interactive tooltip={'(Optional) Database name to ATTACH, e.g. \"\'md:sample_data\'\"'}>
+      <InlineField label="Databases to attach" labelWidth={20} interactive tooltip="(Optional) Comma-separated list. Example: md:sample_data, md:moulid-ddg-logs (quotes optional)">
         <Input
           id="config-editor-db-name"
           onChange={onDatabaseNameChange}
           value={jsonData.databaseName || ''}
-          placeholder="e.g. 'md:sample_data'"
+          placeholder="e.g. md:sample_data, md:moulid-ddg-logs"
           width={40}
         />
       </InlineField>
