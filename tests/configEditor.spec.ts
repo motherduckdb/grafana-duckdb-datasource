@@ -1,5 +1,8 @@
 import { test, expect } from '@grafana/plugin-e2e';
 import { DuckDBDataSourceOptions, SecureJsonData } from '../src/types';
+import { execSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 
 test('"Save & test" should be successful when configuration is valid', async ({
   createDataSourceConfigPage,
