@@ -56,9 +56,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	if strings.HasPrefix(config.Path, "md:") && config.Secrets.MotherDuckToken == "" {
 		return nil, &ConfigError{"MotherDuck Token is missing for motherduck connection"}
 	}
-	var path = config.Path
-	if strings.HasPrefix(config.Path, "md:") && config.Secrets.MotherDuckToken != "" {
-		path = config.Path + "?motherduck_token=" + config.Secrets.MotherDuckToken
+	var path string
+	if strings.HasPrefix(config.Path, "md:") {
+		// Use in-memory base DB; install motherduck and ATTACH later
+		path = ""
+	} else {
+		path = config.Path
 	}
 
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
@@ -79,25 +82,22 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 
 			if strings.HasPrefix(path, "md:") {
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
+
 			} else if config.Secrets.MotherDuckToken != "" {
 				// Still need to install motherduck in order to set the config.
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 			}
-			// Attach database(s) if provided. Accept comma-separated list.
-			if strings.TrimSpace(config.DatabaseName) != "" {
-				parts := strings.Split(config.DatabaseName, ",")
-				for _, p := range parts {
-					db := strings.TrimSpace(p)
-					if db == "" {
-						continue
-					}
-					// If not quoted, wrap in single quotes and escape internal quotes
-					if !((strings.HasPrefix(db, "'") && strings.HasSuffix(db, "'")) || (strings.HasPrefix(db, "\"") && strings.HasSuffix(db, "\""))) {
-						db = "'" + strings.ReplaceAll(db, "'", "''") + "'"
-					}
-					bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
+			if strings.TrimSpace(config.Path) != "" {
+				db := strings.TrimSpace(config.Path)
+				if db == "" {
+					return &ConfigError{"Path is empty"}
 				}
+				// if db has no quotes add them
+				if !((strings.HasPrefix(db, "'") && strings.HasSuffix(db, "'")) || (strings.HasPrefix(db, "\"") && strings.HasSuffix(db, "\""))) {
+					db = "'" + strings.ReplaceAll(db, "'", "''") + "'"
+				}
+				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
 			}
 			// Run other user defined init queries.
 			if strings.TrimSpace(config.InitSql) != "" {

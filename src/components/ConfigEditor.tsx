@@ -29,16 +29,6 @@ export function ConfigEditor(props: Props) {
     });
   };
 
-  const onDatabaseNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onOptionsChange({
-      ...options,
-      jsonData: {
-        ...jsonData,
-        databaseName: event.target.value,
-      },
-    });
-  };
-
 
   // Secure field (only sent to the backend)
   const onMotherDuckTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -64,21 +54,12 @@ export function ConfigEditor(props: Props) {
 
   return (
     <>
-      <InlineField label="DB Path" labelWidth={20} interactive tooltip={'path to DuckDB file'}>
+      <InlineField label="Database name" labelWidth={20} interactive tooltip={'path to DuckDB file or MotherDuck database string'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
           value={jsonData.path}
-          placeholder="Enter the path to the duckdb file, or leave blank for in-memory database."
-          width={40}
-        />
-      </InlineField>
-      <InlineField label="Databases to attach" labelWidth={20} interactive tooltip="(Optional) Comma-separated list. Example: md:sample_data, md:moulid-ddg-logs (quotes optional)">
-        <Input
-          id="config-editor-db-name"
-          onChange={onDatabaseNameChange}
-          value={jsonData.databaseName || ''}
-          placeholder="e.g. md:sample_data, md:moulid-ddg-logs"
+          placeholder="Enter the MotherDuck database string or path to the duckdb file"
           width={40}
         />
       </InlineField>

@@ -25,7 +25,6 @@ import { SQLOptions } from '@grafana/plugin-ui';
 export interface DuckDBDataSourceOptions extends SQLOptions {
   path?: string;
   initSql?: string;
-  databaseName?: string;
 }
 
 /**

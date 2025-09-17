@@ -8,8 +8,8 @@ services:
     build:
       context: ./.config
       args:
-        grafana_image: ${GRAFANA_IMAGE:-grafana-dev}
-        grafana_version: ${GRAFANA_VERSION:-12.3.0-17740723859}
+        grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
+        grafana_version: ${GRAFANA_VERSION:-11.6.0}
     ports:
       - 3000:3000/tcp
       - 2345:2345/tcp # delve
