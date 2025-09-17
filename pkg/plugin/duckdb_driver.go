@@ -98,6 +98,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 					db = "'" + strings.ReplaceAll(db, "'", "''") + "'"
 				}
 				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
+				backend.Logger.Info("ATTACH IF NOT EXISTS " + db + ";")
 			}
 			// Run other user defined init queries.
 			if strings.TrimSpace(config.InitSql) != "" {
