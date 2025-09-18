@@ -91,7 +91,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			if strings.TrimSpace(config.Path) != "" {
 				db := strings.TrimSpace(config.Path)
 				// if db has no quotes add them
-				if !strings.HasPrefix(db, "'") && !strings.HasSuffix(db, "'") {
+				if !strings.HasPrefix(db, "'") && !strings.HasSuffix(db, "'") && strings.HasPrefix(db, "md:") {
 					db = "'" + db + "'"
 				}
 				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")

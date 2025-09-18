@@ -54,7 +54,7 @@ export function ConfigEditor(props: Props) {
 
   return (
     <>
-      <InlineField label="Database name" labelWidth={20} interactive tooltip={'path to DuckDB file or MotherDuck database string'}>
+      <InlineField label="Database name" labelWidth={20} interactive tooltip={'path to DuckDB file or MotherDuck database string or leave blank to use in-memory database'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
