@@ -90,12 +90,9 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			}
 			if strings.TrimSpace(config.Path) != "" {
 				db := strings.TrimSpace(config.Path)
-				if db == "" {
-					return &ConfigError{"Path is empty"}
-				}
 				// if db has no quotes add them
-				if !((strings.HasPrefix(db, "'") && strings.HasSuffix(db, "'")) || (strings.HasPrefix(db, "\"") && strings.HasSuffix(db, "\""))) {
-					db = "'" + strings.ReplaceAll(db, "'", "''") + "'"
+				if !strings.HasPrefix(db, "'") && !strings.HasSuffix(db, "'") {
+					db = "'" + db + "'"
 				}
 				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
 				backend.Logger.Info("ATTACH IF NOT EXISTS " + db + ";")

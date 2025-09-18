@@ -59,7 +59,7 @@ export function ConfigEditor(props: Props) {
           id="config-editor-path"
           onChange={onPathChange}
           value={jsonData.path}
-          placeholder="e.g. md:sample_data or /path/to/database.duckdb"
+          placeholder="e.g. md:sample_data or /path/to/database.duckdb or leave blank to use in-memory database"
           width={40}
         />
       </InlineField>
