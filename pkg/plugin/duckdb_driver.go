@@ -53,17 +53,28 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		return nil, err
 	}
 
-	if strings.HasPrefix(config.Path, "md:") && config.Secrets.MotherDuckToken == "" {
-		return nil, &ConfigError{"MotherDuck Token is missing for motherduck connection"}
-	}
+	// Determine connector path based on input
 	var path string
-	if strings.HasPrefix(config.Path, "md:") {
-		// Use in-memory base DB; install motherduck and ATTACH later
-		path = ""
-	} else {
-		path = config.Path
-	}
+	trimmedPath := strings.TrimSpace(config.Path)
 
+	// Check for invalid path with quotes
+	cleanPath := trimmedPath
+	if (strings.HasPrefix(trimmedPath, "'") && strings.HasSuffix(trimmedPath, "'")) ||
+		(strings.HasPrefix(trimmedPath, "\"") && strings.HasSuffix(trimmedPath, "\"")) {
+		return nil, &ConfigError{"Invalid path: " + trimmedPath + " -> example input: md:sample_data"}
+	}
+	if strings.HasPrefix(cleanPath, "md:") {
+		// MotherDuck: use in-memory base and ATTACH later
+		path = ""
+	} else if trimmedPath != "" {
+		// Local file: use the path directly as connector path
+		path = trimmedPath
+		backend.Logger.Info("Local file path is: " + path)
+	} else {
+		// Empty: in-memory database
+		path = ""
+	}
+	// connect with the path before any other queries are run.
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
@@ -80,22 +91,24 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 				bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
 			}
 
-			if strings.HasPrefix(path, "md:") {
+			// Handle MotherDuck setup and ATTACH
+			if strings.HasPrefix(cleanPath, "md:") {
+				// MotherDuck: install extension, set token, and ATTACH
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
+				if config.Secrets.MotherDuckToken != "" {
+					bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+				} else {
+					return &ConfigError{"MotherDuck Token is missing for motherduck connection"}
+				}
 
+				// Quote the MotherDuck path for ATTACH
+				quotedDB := "'" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
+				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+quotedDB+" (TYPE motherduck);")
+				backend.Logger.Info("ATTACH IF NOT EXISTS " + quotedDB + " (TYPE motherduck);")
 			} else if config.Secrets.MotherDuckToken != "" {
-				// Still need to install motherduck in order to set the config.
+				// Token provided but not MotherDuck path: still install extension for potential use
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
 				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
-			}
-			if strings.TrimSpace(config.Path) != "" {
-				db := strings.TrimSpace(config.Path)
-				// if db has no quotes add them
-				if !strings.HasPrefix(db, "'") && !strings.HasSuffix(db, "'") && strings.HasPrefix(db, "md:") {
-					db = "'" + db + "'"
-				}
-				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+db+";")
-				backend.Logger.Info("ATTACH IF NOT EXISTS " + db + ";")
 			}
 			// Run other user defined init queries.
 			if strings.TrimSpace(config.InitSql) != "" {

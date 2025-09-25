@@ -1,7 +1,5 @@
 import { test, expect } from '@grafana/plugin-e2e';
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
+
 
 
 test('data query should return values 10 and 20', async ({ panelEditPage, readProvisionedDataSource, page }) => {
