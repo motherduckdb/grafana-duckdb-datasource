@@ -1,7 +1,5 @@
 import { test, expect } from '@grafana/plugin-e2e';
 
-
-
 test('data query should return values 10 and 20', async ({ panelEditPage, readProvisionedDataSource, page }) => {
   const ds = await readProvisionedDataSource({ fileName: 'datasources.yml' });
   await panelEditPage.datasource.set(ds.name);
@@ -10,7 +8,7 @@ test('data query should return values 10 and 20', async ({ panelEditPage, readPr
   await panelEditPage.setVisualization('Table');
   await panelEditPage.getQueryEditorRow('A').getByLabel("Query editor Run button").click();
 
-  const isNewGrafana = (process.env.GRAFANA_VERSION || '').includes('12.3.0');
+  const isNewGrafana = (process.env.GRAFANA_VERSION || '').includes('12.2.0');
   if (isNewGrafana) {
     const grid = page.locator('[role="grid"]');
     await expect(grid).toContainText(['10']);
