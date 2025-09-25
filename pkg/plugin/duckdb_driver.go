@@ -63,8 +63,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		(strings.HasPrefix(trimmedPath, "\"") && strings.HasSuffix(trimmedPath, "\"")) {
 		return nil, &ConfigError{"Invalid path: " + trimmedPath + " -> example input: md:sample_data"}
 	}
+
 	if strings.HasPrefix(cleanPath, "md:") {
 		// MotherDuck: use in-memory base and ATTACH later
+		if config.Secrets.MotherDuckToken == "" {
+			return nil, &ConfigError{"MotherDuck Token is missing for motherduck connection"}
+		}
 		path = ""
 	} else if trimmedPath != "" {
 		// Local file: use the path directly as connector path
@@ -95,11 +99,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			if strings.HasPrefix(cleanPath, "md:") {
 				// MotherDuck: install extension, set token, and ATTACH
 				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-				if config.Secrets.MotherDuckToken != "" {
-					bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
-				} else {
-					return &ConfigError{"MotherDuck Token is missing for motherduck connection"}
-				}
+				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
 
 				// Quote the MotherDuck path for ATTACH
 				quotedDB := "'" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
