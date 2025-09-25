@@ -8,8 +8,9 @@ test('data query should return values 10 and 20', async ({ panelEditPage, readPr
   await panelEditPage.setVisualization('Table');
   await panelEditPage.getQueryEditorRow('A').getByLabel("Query editor Run button").click();
 
-  const isNewGrafana = (process.env.GRAFANA_VERSION || '').includes('12.2.0');
-  if (isNewGrafana) {
+  // 12.2.0 or higher uses the new data grid
+  const GrafanaVersion = (process.env.GRAFANA_VERSION || '');
+  if (GrafanaVersion >= '12.2.0') {
     const grid = page.locator('[role="grid"]');
     await expect(grid).toContainText(['10']);
     await expect(grid).toContainText(['20']);
