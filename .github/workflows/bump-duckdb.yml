@@ -37,10 +37,8 @@ jobs:
 
           go mod tidy
 
-          # Extract the actual version that was installed
           INSTALLED_VERSION=$(go list -m -f '{{.Version}}' github.com/duckdb/duckdb-go/v2)
           echo "installed_version=$INSTALLED_VERSION" >> $GITHUB_OUTPUT
-          echo "Installed duckdb-go $INSTALLED_VERSION"
 
       - name: Create Pull Request
         env:
@@ -53,7 +51,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git checkout -b "$BRANCH"
-          git add go.mod go.sum
+          git add -A
           git commit -m "bump duckdb-go to ${VERSION}"
           git push origin "$BRANCH"
 
