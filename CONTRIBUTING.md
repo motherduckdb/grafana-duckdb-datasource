@@ -1,5 +1,7 @@
 # Grafana DuckDB Data Source Plugin - How To Contribute
 
+no op change, please don't merge. Want to test grafana latest with no changes
+
 ## Local Development
 
 ### Prerequisites
