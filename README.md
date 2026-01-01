@@ -117,7 +117,7 @@ LIMIT 100
 
 ## File Import Support
 
-Through a rich eacosystem of extensions, DuckDB supports reading data from various file formats:
+Through a rich ecosystem of extensions, DuckDB supports reading data from various file formats:
 
 ```sql
 -- CSV import
