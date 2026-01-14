@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,11 +18,11 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
+	duckdb "github.com/duckdb/duckdb-go/v2"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v3"
-	duckdb "github.com/duckdb/duckdb-go/v2"
 	"github.com/motherduckdb/grafana-duckdb-datasource/pkg/models"
 )
 
@@ -195,10 +197,64 @@ func (n *NullDecimal) Value() (driver.Value, error) {
 	return n.Decimal, nil
 }
 
+// NullBigInt is a wrapper for *big.Int that implements sql.Scanner
+type NullBigInt struct {
+	BigInt *big.Int
+	Valid  bool
+}
+
+func (n *NullBigInt) Scan(value any) error {
+	if value == nil {
+		n.BigInt = nil
+		n.Valid = false
+		return nil
+	}
+	n.Valid = true
+	bi, ok := value.(*big.Int)
+	if !ok {
+		backend.Logger.Info("got unexpected value not of big.Int type: %+v", value)
+		n.BigInt = nil
+		n.Valid = false
+		return errors.New("expected value to be big.Int")
+	}
+	n.BigInt = bi
+	return nil
+}
+
+func (n *NullBigInt) Value() (driver.Value, error) {
+	if !n.Valid || n.BigInt == nil {
+		return nil, nil
+	}
+	return n.BigInt, nil
+}
+
 func GetConverterList() []sqlutil.Converter {
 	// NEED:
 	// NULL to uint64, uint32, uint16, uint8,  not supported
 	// Names: BIT, UBIGINT, UHUGEINT, UINTEGER, USMALLINT, UTINYINT
+
+	// Add converter for HUGEINT that returns *big.Int
+	bigIntConverters := []sqlutil.Converter{
+		{
+			Name:          "handle HUGEINT (returns *big.Int)",
+			InputScanType: reflect.TypeOf(NullBigInt{}),
+			InputTypeName: "HUGEINT",
+			FrameConverter: sqlutil.FrameConverter{
+				// There's no numerical FieldType that's big enough for HUGEINTs, so
+				// output as string.
+				FieldType: data.FieldTypeNullableString,
+				ConverterFunc: func(in interface{}) (interface{}, error) {
+					v := in.(*NullBigInt)
+					if !v.Valid || v.BigInt == nil {
+						return (*string)(nil), nil
+					}
+					str := v.BigInt.String()
+					return &str, nil
+				},
+			},
+		},
+	}
+
 	strConverters := sqlutil.ToConverters([]sqlutil.StringConverter{
 		{
 			Name:           "handle FLOAT8",
@@ -379,5 +435,6 @@ func GetConverterList() []sqlutil.Converter {
 			},
 		},
 	}
-	return append(converters, strConverters...)
+	allConverters := append(bigIntConverters, converters...)
+	return append(allConverters, strConverters...)
 }
