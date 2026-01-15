@@ -1,16 +1,22 @@
+# This GitHub Action automates the process of building Grafana plugins.
+# (For more information, see https://github.com/grafana/plugin-actions/blob/main/build-plugin/README.md)
 name: Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # Run workflow on version tags, e.g. v1.0.0.
 
 permissions:
+  contents: read
   contents: write
   actions: read
 
 jobs:
   release:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Download artifact from CI

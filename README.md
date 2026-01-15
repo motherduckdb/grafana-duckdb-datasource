@@ -4,11 +4,16 @@ The DuckDB data source plugin lets you query and visualize DuckDB data in Grafan
 
 The plugin is built and maintained by [MotherDuck](https://motherduck.com), a data platform that provides a cloud-based serverless DuckDB as a service, with additional features like data sharing, read scaling and more.
 
-![Query Editor](./ui-example.png)
+##  Compatibility
 
+This plugin requires:
+* Grafana Version 10.4.0 or later.
+* glibc 2.35 or later (this means Ubuntu 22.04 or above)
 
-## Version Compatibility
-Requires Grafana Version 10.4.0 or later.
+> [!WARNING] Alpine/Musl platforms are NOT supported.
+> This plugin uses [duckdb-go](https://github.com/duckdb/duckdb-go) which only provides glibc-based Linux binaries. Alpine Linux uses musl libc and is incompatible.
+> **Docker users:** You must use Ubuntu-based Grafana images (`grafana/grafana:latest-ubuntu`).
+> The default Grafana image is Alpine-based and will not work.
 
 
 ## Features
@@ -125,6 +130,8 @@ SELECT * FROM read_parquet('path/to/file.parquet');
 SELECT * FROM read_json_auto('path/to/file.json');
 ```
 
+![Query Editor](./ui-example.png)
+
 ## Known Issues and Suggestions for Workarounds
 
 ### Updating data in the DuckDB file
@@ -137,82 +144,15 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
 
 If you are running the official Grafana docker image, having a DuckDB data source pointing to `md:` or `md:...` will not work due to file system permissions issues. As a workaround, leave the db path field blank, and in the `initSQL` section, add `ATTACH IF NOT EXISTS 'md:';`.
 
+### Grafana DuckDB Plugin is not compatible with Alpine based images.
 
-## Local Development
+If you are starting out with the Grafana DuckDB plugin and are running into any of the following, double-check your base image:
+   * error while loading shared libraries: libstdc++.so.6: cannot open shared object file: No such file or directory
+   * the plugin is missing dynamic-link libraries necessary to run
+   * fork/exec ...: no such file or directory
 
-### Prerequisites
+These symptoms all have the same cause: Alpine uses musl libc, not glibc. The go-duckdb binary is compiled against glibc and cannot run on musl. The "no such file or directory" error is particularly confusing because the file exists - it's the dynamic linker (/lib/ld-linux-*.so) that's missing.
 
-- Node.js (v20+)
-- Go (v1.21+), Mage, gcc (building the backend requires CGO)
-
-### Building Locally
-
-#### Backend
-
-To build the backend plugin binary for your platform, run:
-
-```bash 
-mage -v build:<platform> build:GenerateManifestFile
-```
-possible values for `<platform>` are: `Linux`, `Windows`, `Darwin`, `DarwinARM64`, `LinuxARM64`, `LinuxARM`.
-
-Note: There's no clear way to cross-compile the plugin since it involves cross-compiling DuckDB via CGO.
-
-#### Frontend
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Build plugin in development mode and run in watch mode
-
-   ```bash
-   npm run dev
-   ```
-
-3. Build plugin in production mode
-
-   ```bash
-   npm run build
-   ```
-
-4. Run the tests (using Jest)
-
-   ```bash
-   # Runs the tests and watches for changes, requires git init first
-   npm run test
-
-   # Exits after running all the tests
-   npm run test:ci
-   ```
-
-5. Spin up a Grafana instance and run the plugin inside it (using Docker)
-
-   ```bash
-   npm run server
-   ```
-
-6. Run the E2E tests (using Cypress)
-
-   ```bash
-   # Spins up a Grafana instance first that we tests against
-   npm run server
-
-   # Starts the tests
-   npm run e2e
-   ```
-
-7. Run the linter
-
-   ```bash
-   npm run lint
-
-   # or
-
-   npm run lint:fix
-   ```
 
 ## Links
 
