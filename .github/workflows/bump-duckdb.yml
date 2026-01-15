@@ -7,7 +7,6 @@ on:
         description: 'duckdb-go version (optional, e.g., v2.5.4). If not provided, uses latest.'
         required: false
         type: string
-  pull_request:
 
 permissions:
   contents: write
@@ -30,8 +29,7 @@ jobs:
           VERSION="${{ inputs.duckdb_go_version }}"
 
           if [ -z "$VERSION" ]; then
-            # TODO: revert to @latest after testing
-            go get github.com/duckdb/duckdb-go/v2@v2.5.2
+            go get github.com/duckdb/duckdb-go/v2@latest
           else
             go get "github.com/duckdb/duckdb-go/v2@${VERSION}"
           fi
