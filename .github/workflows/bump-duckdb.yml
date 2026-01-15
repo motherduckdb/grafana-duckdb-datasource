@@ -30,7 +30,8 @@ jobs:
           VERSION="${{ inputs.duckdb_go_version }}"
 
           if [ -z "$VERSION" ]; then
-            go get github.com/duckdb/duckdb-go/v2@latest
+            # TODO: revert to @latest after testing
+            go get github.com/duckdb/duckdb-go/v2@v2.5.2
           else
             go get "github.com/duckdb/duckdb-go/v2@${VERSION}"
           fi
