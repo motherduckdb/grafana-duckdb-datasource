@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/duckdb/duckdb-go/v2 v2.5.4
+	github.com/duckdb/duckdb-go/v2 v2.5.2
 	github.com/grafana/grafana-plugin-sdk-go v0.274.0
 	github.com/grafana/sqlds/v3 v3.4.2
 	github.com/mitchellh/mapstructure v1.5.0
