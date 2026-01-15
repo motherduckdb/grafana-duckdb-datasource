@@ -8,15 +8,11 @@ on:
       - 'v*' # Run workflow on version tags, e.g. v1.0.0.
 
 permissions:
-  contents: read
   contents: write
   actions: read
 
 jobs:
   release:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Download artifact from CI
