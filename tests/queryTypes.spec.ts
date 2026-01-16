@@ -5,12 +5,19 @@ test('simple aggregate query like select sum(1) should work', async ({ panelEdit
   await panelEditPage.datasource.set(ds.name);
   await panelEditPage.getQueryEditorRow('A').getByRole("radiogroup").getByLabel("Code").click();
   await panelEditPage.getQueryEditorRow('A').getByLabel("Editor content;Press Alt+F1 for Accessibility Options.").fill('select sum(1)');
-  await panelEditPage.setVisualization('Table');
+
+  // TODO: remove workaround once @grafana/plugin-e2e PR #2399 is released
+  const grafanaVersion = process.env.GRAFANA_VERSION || '';
+  if (grafanaVersion >= '12.4.') {
+    await page.getByTestId('data-testid toggle-viz-picker').click();
+    await page.getByTestId('data-testid Plugin visualization item Table').click();
+  } else {
+    await panelEditPage.setVisualization('Table');
+  }
+
   await panelEditPage.getQueryEditorRow('A').getByLabel("Query editor Run button").click();
 
-  // 12.2.0 or higher uses the new data grid
-  const GrafanaVersion = (process.env.GRAFANA_VERSION || '');
-  if (GrafanaVersion >= '12.2.0') {
+  if (grafanaVersion >= '12.2.') {
     const grid = page.locator('[role="grid"]');
     await expect(grid).toContainText(['1']);
   } else {
