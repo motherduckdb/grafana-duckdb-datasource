@@ -1,4 +1,5 @@
 import { test, expect } from '@grafana/plugin-e2e';
+import { setVisualization } from './helpers';
 
 test('data query should return values 10 and 20', async ({ panelEditPage, readProvisionedDataSource, page }) => {
   const ds = await readProvisionedDataSource({ fileName: 'datasources.yml' });
@@ -6,17 +7,10 @@ test('data query should return values 10 and 20', async ({ panelEditPage, readPr
   await panelEditPage.getQueryEditorRow('A').getByRole("radiogroup").getByLabel("Code").click();
   await panelEditPage.getQueryEditorRow('A').getByLabel("Editor content;Press Alt+F1 for Accessibility Options.").fill('select 10 as val union select 20 as val');
 
-  // TODO: remove workaround once @grafana/plugin-e2e PR #2399 is released
-  const grafanaVersion = process.env.GRAFANA_VERSION || '';
-  if (grafanaVersion >= '12.4.') {
-    await page.getByTestId('data-testid toggle-viz-picker').click();
-    await page.getByTestId('data-testid Plugin visualization item Table').click();
-  } else {
-    await panelEditPage.setVisualization('Table');
-  }
-
+  await setVisualization(page, panelEditPage, 'Table');
   await panelEditPage.getQueryEditorRow('A').getByLabel("Query editor Run button").click();
 
+  const grafanaVersion = process.env.GRAFANA_VERSION || '';
   if (grafanaVersion >= '12.2.') {
     const grid = page.locator('[role="grid"]');
     await expect(grid).toContainText(['10']);
