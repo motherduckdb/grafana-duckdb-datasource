@@ -1,0 +1,66 @@
+name: Bump DuckDB Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      duckdb_go_version:
+        description: 'duckdb-go version (optional, e.g., v2.5.4). If not provided, uses latest.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Update duckdb-go dependency
+        id: update
+        run: |
+          VERSION="${{ inputs.duckdb_go_version }}"
+
+          if [ -z "$VERSION" ]; then
+            go get github.com/duckdb/duckdb-go/v2@latest
+          else
+            go get "github.com/duckdb/duckdb-go/v2@${VERSION}"
+          fi
+
+          go mod tidy
+
+          INSTALLED_VERSION=$(go list -m -f '{{.Version}}' github.com/duckdb/duckdb-go/v2)
+          echo "installed_version=$INSTALLED_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.update.outputs.installed_version }}"
+          BRANCH="bump-duckdb-go-${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "bump duckdb-go to ${VERSION}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "bump duckdb-go to ${VERSION}" \
+            --body "Automated PR to bump duckdb-go version.
+
+          - duckdb-go: ${VERSION}
+
+          ---
+          Triggered by workflow_dispatch." \
+            --base main \
+            --head "$BRANCH"
