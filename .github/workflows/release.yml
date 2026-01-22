@@ -37,12 +37,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh run download \
+          RUN_ID=$(gh run list \
+            --repo ${{ github.repository }} \
+            --workflow ci.yml \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          gh run download "$RUN_ID" \
             --repo ${{ github.repository }} \
             --name final-dist \
-            --dir artifact \
-            -w ci.yml \
-            -b main
+            --dir artifact
 
       - name: Create draft release and upload artifacts
         env:
