@@ -48,7 +48,7 @@ jobs:
           echo "Downloading artifacts from CI run: $RUN_ID"
           gh run download "$RUN_ID" \
             --repo ${{ github.repository }} \
-            --name final-dist \
+            --pattern 'motherduck-duckdb-datasource-*' \
             --dir artifact
 
           echo "Downloaded files:"
