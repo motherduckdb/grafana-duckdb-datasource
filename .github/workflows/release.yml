@@ -25,7 +25,6 @@ jobs:
       VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - name: Checkout repository
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
 
       - name: Create and push tag
