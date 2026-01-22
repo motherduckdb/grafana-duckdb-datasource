@@ -41,16 +41,18 @@ jobs:
           RUN_ID=$(gh run list \
             --repo ${{ github.repository }} \
             --workflow ci.yml \
-            --branch main \
-            --status success \
-            --limit 1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
+            --limit 20 \
+            --json databaseId,headBranch,conclusion \
+            --jq '[.[] | select(.headBranch == "main" and .conclusion == "success")][0].databaseId')
 
+          echo "Downloading artifacts from CI run: $RUN_ID"
           gh run download "$RUN_ID" \
             --repo ${{ github.repository }} \
             --name final-dist \
             --dir artifact
+
+          echo "Downloaded files:"
+          find artifact -type f
 
       - name: Create draft release and upload artifacts
         env:
