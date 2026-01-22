@@ -6,6 +6,12 @@ on:
   push:
     tags:
       - 'v*' # Run workflow on version tags, e.g. v1.0.0.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name (e.g., v1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,7 +20,19 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
+      - name: Checkout repository
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$VERSION"
+          git push origin "$VERSION"
+
       - name: Download artifact from CI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -30,10 +48,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
+          gh release create "$VERSION" \
             --draft \
             --generate-notes \
-            --title "${{ github.ref_name }}" \
+            --title "$VERSION" \
             -R ${{ github.repository }}
 
-          find artifact -name "*.zip" -exec gh release upload "${{ github.ref_name }}" {} --clobber \;
+          find artifact -name "*.zip" -exec gh release upload "$VERSION" {} --clobber \;
