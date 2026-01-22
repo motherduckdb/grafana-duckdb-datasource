@@ -57,10 +57,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          ZIP_FILE=$(find artifact -name "*.zip" | head -1)
+          echo "Uploading: $ZIP_FILE"
+
           gh release create "$VERSION" \
             --draft \
             --generate-notes \
             --title "$VERSION" \
-            -R ${{ github.repository }}
-
-          find artifact -name "*.zip" -exec gh release upload "$VERSION" {} --clobber \;
+            -R ${{ github.repository }} \
+            "$ZIP_FILE"
