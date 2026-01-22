@@ -12,6 +12,7 @@ on:
         description: 'Version name (e.g., v1.0.0)'
         required: true
         type: string
+  pull_request:
 
 permissions:
   contents: write
