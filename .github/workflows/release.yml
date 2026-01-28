@@ -6,6 +6,12 @@ on:
   push:
     tags:
       - 'v*' # Run workflow on version tags, e.g. v1.0.0.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name (e.g., v1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,26 +20,48 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$VERSION"
+          git push origin "$VERSION"
+
       - name: Download artifact from CI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh run download \
+          RUN_ID=$(gh run list \
             --repo ${{ github.repository }} \
-            --name final-dist \
-            --dir artifact \
-            -w ci.yml \
-            -b main
+            --workflow ci.yml \
+            --limit 20 \
+            --json databaseId,headBranch,conclusion \
+            --jq '[.[] | select(.headBranch == "main" and .conclusion == "success")][0].databaseId')
+
+          echo "Downloading artifacts from CI run: $RUN_ID"
+          gh run download "$RUN_ID" \
+            --repo ${{ github.repository }} \
+            --pattern 'motherduck-duckdb-datasource-*' \
+            --dir artifact
+
+          echo "Downloaded files:"
+          find artifact -type f
 
       - name: Create draft release and upload artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
+          ZIP_FILE=$(find artifact -name "*.zip" | head -1)
+          echo "Uploading: $ZIP_FILE"
+
+          gh release create "$VERSION" \
             --draft \
             --generate-notes \
-            --title "${{ github.ref_name }}" \
-            -R ${{ github.repository }}
-
-          find artifact -name "*.zip" -exec gh release upload "${{ github.ref_name }}" {} --clobber \;
+            --title "$VERSION" \
+            -R ${{ github.repository }} \
+            "$ZIP_FILE"
