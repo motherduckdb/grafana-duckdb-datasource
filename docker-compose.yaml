@@ -4,6 +4,7 @@ services:
   grafana:
     user: root
     container_name: 'motherduck-duckdb-datasource'
+    platform: linux/arm64
 
     build:
       context: ./.config
