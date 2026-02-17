@@ -57,11 +57,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ZIP_FILE=$(find artifact -name "*.zip" | head -1)
-          echo "Uploading: $ZIP_FILE"
+          RELEASE_VERSION="${VERSION#v}"
+          RENAMED_ZIP="artifact/motherduck-duckdb-datasource-${RELEASE_VERSION}.zip"
+          mv "$ZIP_FILE" "$RENAMED_ZIP"
+          echo "Uploading: $RENAMED_ZIP"
 
           gh release create "$VERSION" \
             --draft \
             --generate-notes \
             --title "$VERSION" \
             -R ${{ github.repository }} \
-            "$ZIP_FILE"
+            "$RENAMED_ZIP"
