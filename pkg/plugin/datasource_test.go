@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -43,7 +42,7 @@ func TestCustomUserAgent(t *testing.T) {
 		path string
 	}{
 		{"in-memory", ""},
-		{"in-memory with param", filepath.Join(t.TempDir(), ":memory:?threads=4")},
+		{"in-memory with param", ":memory:?threads=4"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
