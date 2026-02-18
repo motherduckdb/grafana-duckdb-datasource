@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -37,47 +38,59 @@ func TestQueryData(t *testing.T) {
 }
 
 func TestCustomUserAgent(t *testing.T) {
-	ds := NewDatasource(&DuckDBDriver{Initialized: false})
-	_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
-		JSONData: []byte(`{"path":""}`),
-	})
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"in-memory", ""},
+		{"in-memory with param", filepath.Join(t.TempDir(), ":memory:?threads=4")},
 	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pathJSON, _ := json.Marshal(tc.path)
+			ds := NewDatasource(&DuckDBDriver{Initialized: false})
+			_, err := ds.NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+				JSONData: []byte(fmt.Sprintf(`{"path":%s}`, pathJSON)),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	resp, err := ds.QueryData(
-		context.Background(),
-		&backend.QueryDataRequest{
-			PluginContext: backend.PluginContext{
-				DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{},
-			},
-			Queries: []backend.DataQuery{
-				{RefID: "A", JSON: json.RawMessage(`{"rawSql": "PRAGMA user_agent;"}`)},
-			},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(resp.Responses) != 1 {
-		t.Fatal("expected 1 response")
-	}
-	for _, r := range resp.Responses {
-		if r.Error != nil {
-			t.Fatal(r.Error)
-		}
-		if len(r.Frames) == 0 || r.Frames[0].Fields[0].Len() == 0 {
-			t.Fatal("expected non-empty result")
-		}
-		val := r.Frames[0].Fields[0].At(0)
-		userAgent := fmt.Sprintf("%v", val)
-		if sp, ok := val.(*string); ok && sp != nil {
-			userAgent = *sp
-		}
-		if !strings.Contains(userAgent, "grafana") {
-			t.Errorf("expected user_agent to contain 'grafana', got: %s", userAgent)
-		}
-		t.Logf("user_agent: %s", userAgent)
+			resp, err := ds.QueryData(
+				context.Background(),
+				&backend.QueryDataRequest{
+					PluginContext: backend.PluginContext{
+						DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{},
+					},
+					Queries: []backend.DataQuery{
+						{RefID: "A", JSON: json.RawMessage(`{"rawSql": "PRAGMA user_agent;"}`)},
+					},
+				},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(resp.Responses) != 1 {
+				t.Fatal("expected 1 response")
+			}
+			for _, r := range resp.Responses {
+				if r.Error != nil {
+					t.Fatal(r.Error)
+				}
+				if len(r.Frames) == 0 || r.Frames[0].Fields[0].Len() == 0 {
+					t.Fatal("expected non-empty result")
+				}
+				val := r.Frames[0].Fields[0].At(0)
+				userAgent := fmt.Sprintf("%v", val)
+				if sp, ok := val.(*string); ok && sp != nil {
+					userAgent = *sp
+				}
+				if !strings.Contains(userAgent, "grafana") {
+					t.Errorf("expected user_agent to contain 'grafana', got: %s", userAgent)
+				}
+				t.Logf("user_agent: %s", userAgent)
+			}
+		})
 	}
 }
 
