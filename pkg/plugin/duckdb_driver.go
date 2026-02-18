@@ -80,6 +80,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		// Empty: in-memory database
 		path = ""
 	}
+	// Set custom_user_agent via DSN parameter (must be set at connection open time)
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	path += sep + "custom_user_agent=grafana"
 	// connect with the path before any other queries are run.
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		d.mu.Lock()
