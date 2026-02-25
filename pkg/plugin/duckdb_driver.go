@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -163,7 +164,24 @@ func (d *DuckDBDriver) FillMode() *data.FillMissing {
 }
 
 func (d *DuckDBDriver) Macros() sqlds.Macros {
-	return sqlutil.DefaultMacros
+	return sqlutil.Macros{
+		"timeFrom": macroTimeFrom,
+		"timeTo":   macroTimeTo,
+	}
+}
+
+func macroTimeFrom(query *sqlutil.Query, args []string) (string, error) {
+	if len(args) == 0 || (len(args) == 1 && strings.TrimSpace(args[0]) == "") {
+		return "'" + query.TimeRange.From.UTC().Format(time.RFC3339) + "'", nil
+	}
+	return "", fmt.Errorf("%w: expected 0 arguments, received %d", sqlutil.ErrorBadArgumentCount, len(args))
+}
+
+func macroTimeTo(query *sqlutil.Query, args []string) (string, error) {
+	if len(args) == 0 || (len(args) == 1 && strings.TrimSpace(args[0]) == "") {
+		return "'" + query.TimeRange.To.UTC().Format(time.RFC3339) + "'", nil
+	}
+	return "", fmt.Errorf("%w: expected 0 arguments, received %d", sqlutil.ErrorBadArgumentCount, len(args))
 }
 
 func (d *DuckDBDriver) Converters() []sqlutil.Converter {
