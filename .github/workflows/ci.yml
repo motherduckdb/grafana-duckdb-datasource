@@ -416,7 +416,7 @@ jobs:
 
   deploy:
     needs: [check-version-bump, playwright-tests]
-    if: needs.check-version-bump.outputs.bumped == 'true'
+    if: needs.check-version-bump.outputs.bumped == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/release.yml
     with:
       version: ${{ needs.check-version-bump.outputs.version }}
