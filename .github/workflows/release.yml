@@ -12,6 +12,12 @@ on:
         description: 'Version name (e.g., v1.0.0)'
         required: true
         type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version name (e.g., v1.0.0)'
+        required: false
+        type: string
 
 permissions:
   contents: write

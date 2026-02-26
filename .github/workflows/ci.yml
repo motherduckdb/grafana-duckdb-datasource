@@ -9,7 +9,9 @@ on:
     branches:
       - main
 
-permissions: read-all
+permissions:
+  contents: write
+  actions: read
 
 jobs:
   build-linux-amd64:
@@ -386,3 +388,32 @@ jobs:
           name: playwright-report-${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}
           path: playwright-report/
           retention-days: 5
+
+  check-version-bump:
+    runs-on: ubuntu-latest
+    outputs:
+      bumped: ${{ steps.check.outputs.bumped }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # need previous commit to diff
+
+      - id: check
+        run: |
+          PREV=$(git show HEAD~1:package.json | jq -r '.version')
+          CURR=$(jq -r '.version' package.json)
+          if [ "$PREV" != "$CURR" ]; then
+            echo "bumped=true" >> $GITHUB_OUTPUT
+            echo "version=v${CURR}" >> $GITHUB_OUTPUT
+          else
+            echo "bumped=false" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: check-version-bump
+    if: needs.check-version-bump.outputs.bumped == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.check-version-bump.outputs.version }}
+    secrets: inherit
