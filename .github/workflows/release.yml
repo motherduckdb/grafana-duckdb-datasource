@@ -3,14 +3,17 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*' # Run workflow on version tags, e.g. v1.0.0.
   workflow_dispatch:
     inputs:
       version:
         description: 'Version name (e.g., v1.0.0)'
         required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version name (e.g., v1.0.0)'
+        required: false
         type: string
 
 permissions:
@@ -40,8 +43,8 @@ jobs:
             --repo ${{ github.repository }} \
             --workflow ci.yml \
             --limit 20 \
-            --json databaseId,headBranch,conclusion \
-            --jq '[.[] | select(.headBranch == "main" and .conclusion == "success")][0].databaseId')
+            --json status,databaseId,headBranch \
+            --jq '[.[] | select(.headBranch == "main" and .status == "in_progress")][0].databaseId')
 
           echo "Downloading artifacts from CI run: $RUN_ID"
           gh run download "$RUN_ID" \
