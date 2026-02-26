@@ -43,8 +43,8 @@ jobs:
             --repo ${{ github.repository }} \
             --workflow ci.yml \
             --limit 20 \
-            --json databaseId,headBranch,conclusion \
-            --jq '[.[] | select(.headBranch == "main" and .conclusion == "success")][0].databaseId')
+            --json status,databaseId,headBranch \
+            --jq '[.[] | select(.headBranch == "main" and .status == "in_progress")][0].databaseId')
 
           echo "Downloading artifacts from CI run: $RUN_ID"
           gh run download "$RUN_ID" \
