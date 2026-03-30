@@ -29,6 +29,16 @@ export function ConfigEditor(props: Props) {
     });
   };
 
+  const onMaxOpenConnsChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value, 10);
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        maxOpenConns: isNaN(value) ? 0 : value,
+      },
+    });
+  };
 
   // Secure field (only sent to the backend)
   const onMotherDuckTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -73,6 +83,16 @@ export function ConfigEditor(props: Props) {
               width={60}
               rows={5}
           />
+      </InlineField>
+      <InlineField label="Max Connections" labelWidth={20} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>
+        <Input
+          id="config-editor-max-open-conns"
+          type="number"
+          onChange={onMaxOpenConnsChange}
+          value={jsonData.maxOpenConns ?? ''}
+          placeholder="25"
+          width={40}
+        />
       </InlineField>
       <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'MotherDuck Token'}>
         <SecretInput

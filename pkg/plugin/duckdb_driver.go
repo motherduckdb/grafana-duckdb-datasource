@@ -137,6 +137,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 
 	db := sql.OpenDB(connector)
 
+	maxOpen := 25
+	if config.MaxOpenConns > 0 {
+		maxOpen = config.MaxOpenConns
+	}
+	db.SetMaxOpenConns(maxOpen)
+
 	return db, nil
 }
 
