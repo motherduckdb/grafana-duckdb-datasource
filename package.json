@@ -1,6 +1,6 @@
 {
   "name": "duckdb-datasource",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "DuckDB and MotherDuck datasource for grafana",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
