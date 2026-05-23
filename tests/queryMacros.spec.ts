@@ -1,7 +1,7 @@
-import { test, expect } from '@grafana/plugin-e2e';
+import { test, expect, isGrafanaVersionAtLeast } from './fixtures';
 import { setVisualization } from './helpers';
 
-test('$__time macros expand and filter correctly', async ({ panelEditPage, readProvisionedDataSource, page }) => {
+test('$__time macros expand and filter correctly', async ({ panelEditPage, readProvisionedDataSource, page, grafanaVersion }) => {
   // Note: this test depends on Grafana's default time range (last 6 hours).
   const ds = await readProvisionedDataSource({ fileName: 'datasources.yml' });
   await panelEditPage.datasource.set(ds.name);
@@ -23,10 +23,8 @@ test('$__time macros expand and filter correctly', async ({ panelEditPage, readP
 
   await panelEditPage.getQueryEditorRow('A').getByLabel('Editor content;Press Alt+F1 for Accessibility Options.').fill(query);
 
-  await setVisualization(page, panelEditPage, 'Table');
+  await setVisualization(page, panelEditPage, 'Table', grafanaVersion);
   await panelEditPage.getQueryEditorRow('A').getByLabel('Query editor Run button').click();
-
-  const grafanaVersion = process.env.GRAFANA_VERSION || '';
 
   const checkResults = async (locator: any) => {
     // Basic presence/absence checks
@@ -41,7 +39,7 @@ test('$__time macros expand and filter correctly', async ({ panelEditPage, readP
     expect(tsMatches.length).toBeGreaterThanOrEqual(2);
   };
 
-  if (grafanaVersion >= '12.2.') {
+  if (isGrafanaVersionAtLeast(grafanaVersion, '12.2.0')) {
     const grid = page.locator('[role="grid"]');
     await checkResults(grid);
   } else {
