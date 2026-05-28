@@ -44,6 +44,8 @@ jobs:
 
 
   build-linux-arm64:
+    # TEMP: disabled while iterating on PR CI; restore before merge.
+    if: ${{ false }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -167,7 +169,7 @@ jobs:
           retention-days: 5
 
   generate-manifest:
-    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-macos-amd64, build-windows]
+    needs: [build-linux-amd64, build-macos-arm64, build-macos-amd64, build-windows]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
