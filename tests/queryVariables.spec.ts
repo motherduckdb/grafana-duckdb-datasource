@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@grafana/plugin-e2e';
 
 test('data source supports multiple query variables in one dashboard', async ({
     readProvisionedDashboard,

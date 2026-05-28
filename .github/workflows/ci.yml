@@ -44,7 +44,7 @@ jobs:
 
 
   build-linux-arm64:
-    # TEMP: disabled while iterating on PR CI; restore before merge.
+    # TEMP: disabled to speed up PR CI.
     if: ${{ false }}
     runs-on: ubuntu-22.04
     steps:
