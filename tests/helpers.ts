@@ -9,6 +9,12 @@ export async function setVisualization(page: Page, panelEditPage: any, vizName: 
   if (grafanaVersion >= '12.4.') {
     // Check if viz picker is already open (it opens automatically for new panels in 12.4.0+)
     const vizItem = page.getByTestId(`data-testid Plugin visualization item ${vizName}`);
+    const vizButton = page.getByRole('button', { name: vizName, exact: true }).last();
+    if (await vizButton.isVisible({ timeout: 500 }).catch(() => false)) {
+      await vizButton.click();
+      return;
+    }
+
     if (!await vizItem.isVisible({ timeout: 500 }).catch(() => false)) {
       // Picker not open or item not visible - click toggle and switch to All visualizations tab
       await page.getByTestId('data-testid toggle-viz-picker').click();
