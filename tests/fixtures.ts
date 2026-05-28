@@ -39,10 +39,6 @@ export const isGrafana13 = isGrafanaVersionAtLeast(process.env.GRAFANA_VERSION, 
  * modal that appears in Grafana 13+ and blocks interaction with page elements.
  */
 export const test = base.extend({
-  grafanaVersion: async ({ bootData }, run) => {
-    await run(normalizeGrafanaVersion(process.env.GRAFANA_VERSION) || normalizeGrafanaVersion(bootData.version));
-  },
-
   panelEditPage: async ({ dashboardPage, grafanaVersion, page, request, selectors }, run, testInfo) => {
     if (!isGrafanaVersionAtLeast(grafanaVersion, '13.0.0')) {
       await run(await dashboardPage.addPanel());
