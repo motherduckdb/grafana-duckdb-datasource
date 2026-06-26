@@ -51,10 +51,15 @@ jobs:
           echo "/tmp/zig-x86_64-linux-${ZIG_VERSION}" >> "$GITHUB_PATH"
           /tmp/zig-x86_64-linux-${ZIG_VERSION}/zig version
 
-      - name: Add swap (the aarch64 amalgamation compile is memory-heavy)
+      # Only arm64 needs this: the aarch64 cross-compile of the 25 MB amalgamation
+      # exhausts the runner's RAM. amd64 builds fine without extra swap.
+      - name: Add swap (replace the runner's small default swapfile)
+        if: matrix.goarch == 'arm64'
         run: |
-          set -euo pipefail
-          sudo fallocate -l 10G /swapfile
+          set -e
+          sudo swapoff -a || true
+          sudo rm -f /swapfile || true
+          sudo fallocate -l 13G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=13312
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
