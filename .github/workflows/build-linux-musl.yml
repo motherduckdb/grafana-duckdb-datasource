@@ -51,6 +51,15 @@ jobs:
           echo "/tmp/zig-x86_64-linux-${ZIG_VERSION}" >> "$GITHUB_PATH"
           /tmp/zig-x86_64-linux-${ZIG_VERSION}/zig version
 
+      - name: Add swap (the aarch64 amalgamation compile is memory-heavy)
+        run: |
+          set -euo pipefail
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - name: Cache static libduckdb.a (${{ matrix.zigtarget }})
         id: cache-libduckdb
         uses: actions/cache@v4
