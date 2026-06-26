@@ -19,7 +19,7 @@ env:
   # Must track the DuckDB version pinned by duckdb-go-bindings (via duckdb-go/v2 in
   # go.mod): v2.10504.0 -> bindings v0.10504.0 -> DuckDB v1.5.4.
   DUCKDB_VERSION: v1.5.4
-  ZIG_VERSION: 0.14.1
+  ZIG_VERSION: 0.16.0
 
 jobs:
   build-musl:
@@ -44,9 +44,12 @@ jobs:
           go-version: '1.24'
 
       - name: Install Zig ${{ env.ZIG_VERSION }}
-        uses: mlugg/setup-zig@v1
-        with:
-          version: ${{ env.ZIG_VERSION }}
+        run: |
+          set -euo pipefail
+          curl -fL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          echo "/tmp/zig-x86_64-linux-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          /tmp/zig-x86_64-linux-${ZIG_VERSION}/zig version
 
       - name: Cache static libduckdb.a (${{ matrix.zigtarget }})
         id: cache-libduckdb
