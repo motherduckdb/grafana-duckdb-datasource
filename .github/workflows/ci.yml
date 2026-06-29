@@ -380,7 +380,7 @@ jobs:
     needs: build
     if: ${{ needs.build.outputs.has-e2e == 'true' }}
     outputs:
-      matrix: ${{ steps.resolve-versions.outputs.matrix }}
+      matrix: ${{ steps.filter-supported-versions.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -390,6 +390,20 @@ jobs:
         with:
           # @grafana/plugin-e2e parses GRAFANA_VERSION as semver and fails on "nightly".
           skip-grafana-nightly-image: true
+      - name: Filter unsupported Grafana versions
+        id: filter-supported-versions
+        env:
+          MATRIX: ${{ steps.resolve-versions.outputs.matrix }}
+        run: |
+          set -euo pipefail
+          # Grafana 13 currently fails to load the frontend bundle with React 19.
+          # Track and re-enable 13.x e2e coverage separately in #95.
+          matrix=$(jq -c '[.[] | select((.VERSION | split(".")[0] | tonumber) < 13)]' <<< "$MATRIX")
+          if [ "$matrix" = "[]" ]; then
+            echo "::error::No supported Grafana e2e versions remain after filtering"
+            exit 1
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   playwright-tests:
     needs: [resolve-versions, build]
