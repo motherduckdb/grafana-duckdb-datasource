@@ -67,6 +67,7 @@ export function ConfigEditor(props: Props) {
       <InlineField label="Database name" labelWidth={20} interactive tooltip={'path to DuckDB file or MotherDuck database string or leave blank to use in-memory database'}>
         <Input
           id="config-editor-path"
+          aria-label="Database name"
           onChange={onPathChange}
           value={jsonData.path}
           placeholder="e.g. md:sample_data or /path/to/database.duckdb or leave blank to use in-memory database"
@@ -87,6 +88,7 @@ export function ConfigEditor(props: Props) {
       <InlineField label="Max Connections" labelWidth={20} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>
         <Input
           id="config-editor-max-open-conns"
+          aria-label="Max Connections"
           type="number"
           onChange={onMaxOpenConnsChange}
           value={jsonData.maxOpenConns ?? ''}
@@ -98,6 +100,7 @@ export function ConfigEditor(props: Props) {
         <SecretInput
           required
           id="config-editor-md-token"
+          aria-label="MotherDuck Token"
           isConfigured={secureJsonFields.motherDuckToken}
           value={secureJsonData?.motherDuckToken}
           placeholder="Enter your MotherDuck token"
