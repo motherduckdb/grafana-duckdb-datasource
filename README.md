@@ -8,12 +8,9 @@ The plugin is built and maintained by [MotherDuck](https://motherduck.com), a da
 
 This plugin requires:
 * Grafana Version 10.4.0 or later.
-* glibc 2.35 or later (this means Ubuntu 22.04 or above)
+* Linux, macOS, or Windows on a supported release architecture.
 
-> [!WARNING] Alpine/Musl platforms are NOT supported.
-> This plugin uses [duckdb-go](https://github.com/duckdb/duckdb-go) which only provides glibc-based Linux binaries. Alpine Linux uses musl libc and is incompatible.
-> **Docker users:** You must use Ubuntu-based Grafana images (`grafana/grafana:latest-ubuntu`).
-> The default Grafana image is Alpine-based and will not work.
+Linux release binaries are statically linked with musl, so they run on both Alpine/musl and glibc-based distributions.
 
 
 ## Features
@@ -49,7 +46,7 @@ Finally, restart the Grafana server.
 
 ### Running with Docker
 
-To run the plugin with a Grafana Docker container, you must use the Ubuntu-based Grafana image instead of the default Alpine-based one.  Use the following command to start a Grafana container with the plugin:
+Use the following command to start a Grafana container with the plugin:
 
 ```bash
 docker run -d \
@@ -57,7 +54,7 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/motherduck-duckdb-datasource:/var/lib/grafana/plugins/motherduck-duckdb-datasource \
   -e "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=motherduck-duckdb-datasource" \
-  grafana/grafana:latest-ubuntu
+  grafana/grafana:latest
 ```
 
 This mounts your local plugin directory into the container and configures Grafana to allow loading the unsigned plugin. Remember to replace `$(pwd)/motherduck-duckdb-datasource` with the actual path to your plugin directory if needed.
@@ -144,15 +141,15 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
 
 If you are running the official Grafana docker image, having a DuckDB data source pointing to `md:` or `md:...` will not work due to file system permissions issues. As a workaround, leave the db path field blank, and in the `initSQL` section, add `ATTACH IF NOT EXISTS 'md:';`.
 
-### Grafana DuckDB Plugin is not compatible with Alpine based images.
+### Linux binary compatibility
 
-If you are starting out with the Grafana DuckDB plugin and are running into any of the following, double-check your base image:
-   * error while loading shared libraries: libstdc++.so.6: cannot open shared object file: No such file or directory
-   * the plugin is missing dynamic-link libraries necessary to run
-   * fork/exec ...: no such file or directory
+Current Linux release binaries are statically linked and support Alpine/musl. If you are using an older release and run into any of the following errors, upgrade to a release that includes the static Linux binaries:
 
-These symptoms all have the same cause: Alpine uses musl libc, not glibc. The go-duckdb binary is compiled against glibc and cannot run on musl. The "no such file or directory" error is particularly confusing because the file exists - it's the dynamic linker (/lib/ld-linux-*.so) that's missing.
+* error while loading shared libraries: libstdc++.so.6: cannot open shared object file: No such file or directory
+* the plugin is missing dynamic-link libraries necessary to run
+* fork/exec ...: no such file or directory
 
+These symptoms are usually caused by dynamically linked Linux binaries built against a different libc or C++ runtime than the host image provides.
 
 ## Links
 

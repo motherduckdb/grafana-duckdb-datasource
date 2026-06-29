@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -17,85 +18,161 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  ZIG_VERSION: 0.16.0
+
 jobs:
-  build-linux-amd64:
+  build-linux:
+    name: Build Linux ${{ matrix.goarch }} (static musl)
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            zigtarget: x86_64-linux-musl
+            platform: linux/amd64
+            artifact: linux-amd64-dist
+            run-coverage: true
+          - goarch: arm64
+            zigtarget: aarch64-linux-musl
+            platform: linux/arm64
+            artifact: linux-arm64-dist
+            run-coverage: false
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - uses: magefile/mage-action@v3
+
+      - name: Run Go coverage
+        if: matrix.run-coverage
+        uses: magefile/mage-action@v3
         with:
           version: latest
           args: coverage
-      - uses: magefile/mage-action@v3
-        with:
-          version: latest
-          args: -v build:Linux
-      - name: Upload Linux AMD64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-amd64-dist
-          path: dist/
-          retention-days: 5
 
+      - name: Resolve DuckDB release version
+        id: duckdb
+        shell: bash
+        run: |
+          set -euo pipefail
 
-  build-linux-arm64:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
+          duckdb_go_version="$(go list -m -f '{{.Version}}' github.com/duckdb/duckdb-go/v2)"
+          bindings_version="$(go list -m -f '{{.Version}}' github.com/duckdb/duckdb-go-bindings)"
+          expected_bindings_version="${duckdb_go_version/v2./v0.}"
+
+          if [ "$bindings_version" != "$expected_bindings_version" ]; then
+            echo "::error::duckdb-go ($duckdb_go_version) and duckdb-go-bindings ($bindings_version) are out of sync"
+            exit 1
+          fi
+
+          encoded="${duckdb_go_version#v2.}"
+          encoded="${encoded%%.*}"
+          if ! [[ "$encoded" =~ ^[0-9]{5}$ ]]; then
+            echo "::error::cannot derive DuckDB release version from duckdb-go version: $duckdb_go_version"
+            exit 1
+          fi
+
+          major="${encoded:0:1}"
+          minor_raw="${encoded:1:2}"
+          patch_raw="${encoded:3:2}"
+          duckdb_version="v${major}.$((10#$minor_raw)).$((10#$patch_raw))"
+
+          echo "duckdb-go: $duckdb_go_version"
+          echo "duckdb-go-bindings: $bindings_version"
+          echo "duckdb release: $duckdb_version"
+          echo "version=$duckdb_version" >> "$GITHUB_OUTPUT"
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq xz-utils unzip
+
+          curl -fsSL https://ziglang.org/download/index.json -o /tmp/zig-index.json
+          zig_url="$(jq -r --arg v "$ZIG_VERSION" '.[$v]["x86_64-linux"].tarball' /tmp/zig-index.json)"
+          zig_sha="$(jq -r --arg v "$ZIG_VERSION" '.[$v]["x86_64-linux"].shasum' /tmp/zig-index.json)"
+
+          curl -fsSL "$zig_url" -o /tmp/zig.tar.xz
+          echo "$zig_sha  /tmp/zig.tar.xz" | sha256sum --check -
+          zig_dir="$(tar -tf /tmp/zig.tar.xz | awk -F/ 'NR == 1 { print $1 }')"
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          echo "/tmp/$zig_dir" >> "$GITHUB_PATH"
+          "/tmp/$zig_dir/zig" version
+
+      # Only arm64 needs this: the aarch64 cross-compile of the DuckDB
+      # amalgamation exhausts the runner's RAM without extra swap.
+      - name: Add swap for arm64 DuckDB build
+        if: matrix.goarch == 'arm64'
+        run: |
+          set -e
+          sudo swapoff -a || true
+          sudo rm -f /swapfile || true
+          sudo fallocate -l 13G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=13312
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Cache static libduckdb.a (${{ matrix.zigtarget }})
+        id: cache-libduckdb
+        uses: actions/cache@v4
         with:
-          submodules: recursive
+          path: libduckdb-${{ matrix.goarch }}-musl
+          key: libduckdb-${{ matrix.zigtarget }}-${{ steps.duckdb.outputs.version }}-zig${{ env.ZIG_VERSION }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+      - name: Build static libduckdb.a from the DuckDB amalgamation
+        if: steps.cache-libduckdb.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          curl -fL -o libduckdb-src.zip \
+            "https://github.com/duckdb/duckdb/releases/download/${{ steps.duckdb.outputs.version }}/libduckdb-src.zip"
+          unzip -q libduckdb-src.zip
+          mkdir -p "libduckdb-${{ matrix.goarch }}-musl"
+          # One large translation unit; single-threaded, hence the runtime.
+          zig c++ -target ${{ matrix.zigtarget }} -std=c++11 -O2 -DNDEBUG -fPIC -w \
+            -c duckdb.cpp -o duckdb.o
+          zig ar rcs "libduckdb-${{ matrix.goarch }}-musl/libduckdb.a" duckdb.o
+          rm -f duckdb.o duckdb.cpp duckdb.hpp duckdb.h duckdb_extension.h libduckdb-src.zip
+
+      - name: Build plugin backend (static, musl)
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          LIBDIR="$PWD/libduckdb-${{ matrix.goarch }}-musl"
+          CGO_ENABLED=1 GOOS=linux GOARCH=${{ matrix.goarch }} \
+            CC="zig cc -target ${{ matrix.zigtarget }}" \
+            CXX="zig c++ -target ${{ matrix.zigtarget }}" \
+            CGO_LDFLAGS="-L$LIBDIR -lduckdb -lc++ -lc++abi -lm" \
+            go build -tags duckdb_use_static_lib \
+              -ldflags '-linkmode external -extldflags "-static"' \
+              -o "dist/gpx_duckdb_datasource_linux_${{ matrix.goarch }}" ./pkg
+          file "dist/gpx_duckdb_datasource_linux_${{ matrix.goarch }}"
+
+      - name: Set up QEMU for arm64 smoke test
+        if: matrix.goarch == 'arm64'
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/arm64
 
-      - name: Create temporary Dockerfile
+      - name: Smoke test on Alpine
         run: |
-          cat > Dockerfile << 'EOF'
-          FROM arm64v8/golang:1.24-bookworm
+          set -euo pipefail
+          out=$(docker run --rm --platform ${{ matrix.platform }} -v "$PWD/dist:/w" -w /w \
+                  alpine:3.20 sh -c 'timeout 10 ./gpx_duckdb_datasource_linux_${{ matrix.goarch }} 2>&1 || true')
+          echo "$out"
+          echo "$out" | grep -q "This binary is a plugin" \
+            || { echo "::error::plugin binary failed to load/run on Alpine"; exit 1; }
 
-          RUN go install github.com/magefile/mage@latest
-          RUN mage -init
-
-          RUN apt-get update && apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu
-        
-          RUN rm -rf /var/lib/apt/lists/*
-
-          # Address Issue: error obtaining VCS status: exit status 128
-          #   Use -buildvcs=false to disable VCS stamping.
-          ENV GOFLAGS=-buildvcs=false  
-
-          WORKDIR /repo
-
-          EOF
-
-      - name: Build and run Container
-        shell: sh
-
-        run: |
-          cat > run.sh << 'EOF'
-          #!/bin/sh
-          mage coverage
-          mage -v build:LinuxARM64
-          EOF
-
-          cat run.sh
-          chmod +x run.sh
-          docker build --platform linux/arm64  -t go-arm64 .
-          docker run --platform linux/arm64 -v `pwd`:/repo --name go-arm64 go-arm64 ./run.sh
-
-      - name: Upload Linux ARM64 artifact
+      - name: Upload Linux ${{ matrix.goarch }} artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-arm64-dist
+          name: ${{ matrix.artifact }}
           path: dist/
           retention-days: 5
 
@@ -167,7 +244,7 @@ jobs:
           retention-days: 5
 
   generate-manifest:
-    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-macos-amd64, build-windows]
+    needs: [build-linux, build-macos-arm64, build-macos-amd64, build-windows]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
