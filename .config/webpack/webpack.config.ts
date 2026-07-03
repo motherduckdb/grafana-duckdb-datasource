@@ -45,6 +45,11 @@ const config = async (env): Promise<Configuration> => {
       'slate-plain-serializer',
       '@grafana/slate-react',
       'react',
+      // Grafana provides jsx-runtime matched to its own React version; bundling
+      // the classic shim breaks on React 19 (Grafana 13): it reads the removed
+      // __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner.
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
       'react-dom',
       'react-redux',
       'redux',
