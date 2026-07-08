@@ -45,11 +45,6 @@ const config = async (env): Promise<Configuration> => {
       'slate-plain-serializer',
       '@grafana/slate-react',
       'react',
-      // Grafana provides jsx-runtime matched to its own React version; bundling
-      // the classic shim breaks on React 19 (Grafana 13): it reads the removed
-      // __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner.
-      'react/jsx-runtime',
-      'react/jsx-dev-runtime',
       'react-dom',
       'react-redux',
       'redux',
@@ -203,6 +198,12 @@ const config = async (env): Promise<Configuration> => {
     ],
 
     resolve: {
+      alias: {
+        // Older Grafana versions do not expose react/jsx-runtime; React 19 breaks
+        // the bundled React 18 runtime shim, so use a host-React compat runtime.
+        'react/jsx-runtime': path.resolve(process.cwd(), 'src/compat/reactJsxRuntime.ts'),
+        'react/jsx-dev-runtime': path.resolve(process.cwd(), 'src/compat/reactJsxRuntime.ts'),
+      },
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
       // handle resolving "rootDir" paths
       modules: [path.resolve(process.cwd(), 'src'), 'node_modules'],
