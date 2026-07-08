@@ -198,6 +198,12 @@ const config = async (env): Promise<Configuration> => {
     ],
 
     resolve: {
+      alias: {
+        // Older Grafana versions do not expose react/jsx-runtime; React 19 breaks
+        // the bundled React 18 runtime shim, so use a host-React compat runtime.
+        'react/jsx-runtime': path.resolve(process.cwd(), 'src/compat/reactJsxRuntime.ts'),
+        'react/jsx-dev-runtime': path.resolve(process.cwd(), 'src/compat/reactJsxRuntime.ts'),
+      },
       extensions: ['.js', '.jsx', '.ts', '.tsx'],
       // handle resolving "rootDir" paths
       modules: [path.resolve(process.cwd(), 'src'), 'node_modules'],
