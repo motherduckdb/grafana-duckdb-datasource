@@ -50,6 +50,23 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 	return config, nil
 }
 
+// duckDBDataDir is where DuckDB keeps its home, extensions and secrets.
+// Grafana's Docker image exports GF_PATHS_DATA, but package and Helm installs
+// configure their paths without it. Leaving DuckDB to resolve its own home then
+// fails once anything touches those directories, either because the plugin
+// process has no home ("Can't find the home directory at ''") or because it has
+// one it cannot write to.
+func duckDBDataDir() string {
+	if dir := os.Getenv("GF_PATHS_DATA"); dir != "" {
+		return dir
+	}
+	// A container user without a passwd entry gets "/", which is not writable.
+	if dir, err := os.UserHomeDir(); err == nil && dir != "" && dir != "/" {
+		return dir
+	}
+	return os.TempDir()
+}
+
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
 	config, err := models.LoadPluginSettings(settings)
 	if err != nil {
@@ -93,16 +110,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		defer d.mu.Unlock()
 		bootQueries := []string{}
 		if !d.Initialized {
-			// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
-			homePath := os.Getenv("GF_PATHS_DATA")
-
-			if homePath != "" {
-				bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-				extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-				bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-				secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-				bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
-			}
+			homePath := duckDBDataDir()
+			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
+			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
+			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
+			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
+			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
 
 			// Handle MotherDuck setup and ATTACH
 			if strings.HasPrefix(cleanPath, "md:") {
