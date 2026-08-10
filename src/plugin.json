@@ -6,6 +6,7 @@
   "metrics": true,
   "backend": true,
   "alerting": true,
+  "annotations": true,
   "executable": "gpx_duckdb_datasource",
   "info": {
     "description": "DuckDB and MotherDuck Data source for Grafana",
