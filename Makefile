@@ -3,7 +3,7 @@
 VERSION ?=
 GO_IMAGE ?= golang:1.24-bookworm
 
-.PHONY: dev dist test clean
+.PHONY: dev dist test test-local clean
 
 # Grafana with the plugin on http://localhost:3000
 dev: dist
@@ -22,8 +22,12 @@ else
 	docker build -f dist.Dockerfile --build-arg VERSION=$(VERSION) --output dist .
 endif
 
-# End-to-end tests against a real Grafana, as CI runs them.
+# End-to-end tests, needing nothing but Docker.
 test: dist
+	docker compose run --rm e2e; status=$$?; docker compose down; exit $$status
+
+# The same tests using a local Node.js, as CI runs them.
+test-local: dist
 	npm ci
 	npx playwright install chromium --with-deps
 	docker compose up -d
