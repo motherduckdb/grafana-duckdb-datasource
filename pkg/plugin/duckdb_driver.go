@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -50,15 +51,51 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 	return config, nil
 }
 
-func duckDBDataDir() string {
-	if dir := os.Getenv("GF_PATHS_DATA"); dir != "" {
-		return dir
+// Grafana 12.4 stopped forwarding its environment to plugin processes, so
+// neither GF_PATHS_DATA nor HOME can be relied on to find a writable directory.
+func duckDBDataDir(ctx context.Context, configured string) (string, error) {
+	if configured != "" {
+		if err := claimDataDir(configured); err != nil {
+			return "", &ConfigError{"Data directory " + configured + " is not writable: " + err.Error()}
+		}
+		return configured, nil
 	}
-	// A container user without a passwd entry gets "/", which is not writable.
-	if dir, err := os.UserHomeDir(); err == nil && dir != "" && dir != "/" {
-		return dir
+
+	candidates := []string{os.Getenv("GF_PATHS_DATA")}
+	if cfg := backend.GrafanaConfigFromContext(ctx); cfg != nil {
+		candidates = append(candidates, cfg.Get("GF_PATHS_DATA"))
 	}
-	return os.TempDir()
+	if executable, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Dir(executable))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, home)
+	}
+	candidates = append(candidates, os.TempDir())
+
+	for _, dir := range candidates {
+		if dir == "" || dir == "/" {
+			continue
+		}
+		if err := claimDataDir(dir); err == nil {
+			return dir, nil
+		}
+	}
+
+	// Leave DuckDB to its own defaults rather than failing a data source that
+	// may never install an extension or store a secret.
+	return "", nil
+}
+
+// claimDataDir reports whether dir can hold DuckDB's directories. One that is
+// already set up is accepted as is, so a read-only directory holding
+// preinstalled extensions still wins over an empty writable one.
+func claimDataDir(dir string) error {
+	duckDir := filepath.Join(dir, ".duckdb")
+	if info, err := os.Stat(duckDir); err == nil && info.IsDir() {
+		return nil
+	}
+	return os.MkdirAll(duckDir, 0o755)
 }
 
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
@@ -92,24 +129,37 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		// Empty: in-memory database
 		path = ""
 	}
-	// Set custom_user_agent via DSN parameter (must be set at connection open time)
+	dataDir, err := duckDBDataDir(ctx, strings.TrimSpace(config.DataDir))
+	if err != nil {
+		return nil, err
+	}
+	options := url.Values{}
+	options.Set("custom_user_agent", "grafana")
+
+	// These must be set when the database is opened. Setting them per connection
+	// leaves extension autoloading resolving a home directory of its own.
+	if dataDir != "" {
+		backend.Logger.Info("DuckDB extensions and secrets directory is: " + dataDir)
+		options.Set("home_directory", dataDir)
+		options.Set("extension_directory", filepath.Join(dataDir, ".duckdb/extensions"))
+		options.Set("secret_directory", filepath.Join(dataDir, ".duckdb/stored_secrets"))
+	} else {
+		backend.Logger.Warn("No writable directory found for DuckDB extensions and secrets, using DuckDB defaults")
+	}
+
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&"
 	}
-	path += sep + "custom_user_agent=grafana"
+	path += sep + options.Encode()
+
 	// connect with the path before any other queries are run.
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
-		bootQueries := []string{}
+
 		if !d.Initialized {
-			homePath := duckDBDataDir()
-			bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-			extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-			bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-			secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-			bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
+			bootQueries := []string{}
 
 			// Handle MotherDuck setup and ATTACH
 			if strings.HasPrefix(cleanPath, "md:") {
@@ -130,10 +180,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			if strings.TrimSpace(config.InitSql) != "" {
 				bootQueries = append(bootQueries, config.InitSql)
 			}
+
 			for _, query := range bootQueries {
 				// TODO: Fix context cancellation happening somewhere in the plugin.
-				_, err = execer.ExecContext(context.Background(), query, nil)
-				if err != nil {
+				// Left unset on failure, so the next connection retries the setup
+				// instead of quietly connecting to an unconfigured database.
+				if _, err := execer.ExecContext(context.Background(), query, nil); err != nil {
 					return err
 				}
 			}

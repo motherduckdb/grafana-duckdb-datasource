@@ -29,6 +29,16 @@ export function ConfigEditor(props: Props) {
     });
   };
 
+  const onDataDirChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        dataDir: event.target.value,
+      },
+    });
+  };
+
   const onMaxOpenConnsChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(event.target.value, 10);
     onOptionsChange({
@@ -83,6 +93,16 @@ export function ConfigEditor(props: Props) {
               width={60}
               rows={5}
           />
+      </InlineField>
+      <InlineField label="Data directory" labelWidth={20} interactive
+        tooltip={'Directory for DuckDB extensions and secrets. Leave blank to use the Grafana data directory, falling back to the plugin directory.'}>
+        <Input
+          id="config-editor-data-dir"
+          onChange={onDataDirChange}
+          value={jsonData.dataDir || ''}
+          placeholder="/var/lib/grafana"
+          width={40}
+        />
       </InlineField>
       <InlineField label="Max Connections" labelWidth={20} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>
         <Input
