@@ -29,3 +29,26 @@ services:
       GF_LOG_LEVEL: info
       GF_DATAPROXY_LOGGING: 1
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: motherduck-duckdb-datasource
+
+  # Playwright with browsers preinstalled, so the e2e tests need no local
+  # Node.js. Kept behind a profile so `docker compose up` is unaffected.
+  # The image tag must track @playwright/test in package.json.
+  e2e:
+    profiles: ['test']
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    depends_on:
+      - grafana
+    working_dir: /work
+    environment:
+      GRAFANA_URL: http://grafana:3000
+    volumes:
+      - .:/work
+      # Keeps the container's Linux dependencies out of the host's node_modules.
+      - e2e-node-modules:/work/node_modules
+    command: >
+      bash -c "npm ci &&
+      until curl -sf $$GRAFANA_URL/api/health >/dev/null; do sleep 2; done &&
+      npx playwright test"
+
+volumes:
+  e2e-node-modules:
