@@ -3,15 +3,26 @@ package plugin
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
-func settingsForPath(path string) backend.DataSourceInstanceSettings {
-	return backend.DataSourceInstanceSettings{JSONData: []byte(`{"path":"` + path + `"}`)}
+// json.Marshal escapes the path. Concatenating it into the JSON string by hand
+// would leave the backslashes of a Windows path reading as escape codes,
+// causing the tests to fail on Windows.
+func settingsForPath(t *testing.T, path string) backend.DataSourceInstanceSettings {
+	t.Helper()
+
+	jsonData, err := json.Marshal(map[string]string{"path": path})
+	if err != nil {
+		t.Fatalf("marshalling settings for %q returned %v", path, err)
+	}
+	return backend.DataSourceInstanceSettings{JSONData: jsonData}
 }
 
 // connect opens path through a driver of its own, so each database is
@@ -20,7 +31,7 @@ func connect(t *testing.T, path string) (*DuckDBDriver, *sql.DB) {
 	t.Helper()
 
 	driver := &DuckDBDriver{}
-	db, err := driver.Connect(context.Background(), settingsForPath(path), nil)
+	db, err := driver.Connect(context.Background(), settingsForPath(t, path), nil)
 	if err != nil {
 		t.Fatalf("Connect(%q) returned %v", path, err)
 	}
@@ -65,6 +76,12 @@ func copyFile(t *testing.T, from, to string) {
 // DuckDB returns the instance it already has open for a path, so reconnecting
 // only sees a replaced file once the previous database has been closed.
 func TestConnectReadsAReplacedFile(t *testing.T) {
+	// Windows keeps the open database file locked, so neither this test nor the
+	// scenario it covers can replace a file the plugin is holding open.
+	if runtime.GOOS == "windows" {
+		t.Skip("a file DuckDB has open cannot be replaced on Windows")
+	}
+
 	dir := t.TempDir()
 	small := filepath.Join(dir, "small.db")
 	large := filepath.Join(dir, "large.db")
@@ -83,7 +100,7 @@ func TestConnectReadsAReplacedFile(t *testing.T) {
 
 	copyFile(t, large, target)
 
-	reopened, err := driver.Connect(context.Background(), settingsForPath(target), nil)
+	reopened, err := driver.Connect(context.Background(), settingsForPath(t, target), nil)
 	if err != nil {
 		t.Fatalf("reconnecting returned %v", err)
 	}
