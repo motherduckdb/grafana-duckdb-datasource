@@ -154,6 +154,11 @@ If you are starting out with the Grafana DuckDB plugin and are running into any 
 These symptoms all have the same cause: Alpine uses musl libc, not glibc. The go-duckdb binary is compiled against glibc and cannot run on musl. The "no such file or directory" error is particularly confusing because the file exists - it's the dynamic linker (/lib/ld-linux-*.so) that's missing.
 
 
+## Build, test and release process
+
+How the plugin is built and tested in CI, and how a release is cut, is documented in [CONTRIBUTING.md](./CONTRIBUTING.md#build-test-and-release-process).
+
+
 ## Links
 
 - [DuckDB Documentation](https://duckdb.org/docs/)
