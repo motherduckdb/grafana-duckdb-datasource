@@ -3,17 +3,11 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version name (e.g., v1.0.0)'
-        required: true
-        type: string
   workflow_call:
     inputs:
       version:
         description: 'Version name (e.g., v1.0.0)'
-        required: false
+        required: true
         type: string
 
 permissions:
@@ -24,16 +18,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ inputs.version || github.ref_name }}
+      VERSION: ${{ inputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Create and push tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git tag "$VERSION"
-          git push origin "$VERSION"
 
       - name: Download artifact from CI
         env:
