@@ -35,21 +35,25 @@ func (ds *SQLDataSourceWrapper) NewDatasource(ctx context.Context, settings back
 		return nil, err
 	}
 
-	ds.fileWatcher = NewFileWatcher(config.Path)
-
 	newSqlDs, err := ds.SQLDatasource.NewDatasource(ctx, settings)
 	if err != nil {
 		return nil, err
 	}
 	ds.SQLDatasource = newSqlDs.(*sqlds.SQLDatasource)
 
+	// Created once the database is open, as the file may not exist until DuckDB
+	// opens it.
+	ds.fileWatcher = NewFileWatcher(config.Path)
+
 	return ds, nil
 }
 
 type FileWatcher struct {
-	mu           sync.Mutex
-	path         string
-	isLocalFile  bool
+	mu          sync.Mutex
+	path        string
+	isLocalFile bool
+
+	// Modification time of the file the data source was built from.
 	lastModified time.Time
 }
 
@@ -57,41 +61,44 @@ func NewFileWatcher(path string) *FileWatcher {
 	// If path is empty (in-memory duckdb) or connecting to motherduck, then file watcher is not needed.
 	isLocalFile := !(strings.HasPrefix(path, "md:") || path == "")
 
-	return &FileWatcher{path: path, isLocalFile: isLocalFile, lastModified: time.Now()}
+	watcher := &FileWatcher{path: path, isLocalFile: isLocalFile}
+	if isLocalFile {
+		// Left zero if the file cannot be read, so the first check that can read
+		// it reports an update and the data source is rebuilt against it.
+		if info, err := os.Stat(path); err == nil {
+			watcher.lastModified = info.ModTime()
+		}
+	}
+
+	return watcher
 }
 
-// HasUpdate reports a change to exactly one caller, so concurrent queries do
-// not all try to reload the same replacement.
-func (f *FileWatcher) HasUpdate() bool {
+// HasUpdate reports whether the file has been replaced since the last reload it
+// was told about, along with the modification time it saw. It records nothing,
+// so a reload that fails is simply reported again by the next check.
+func (f *FileWatcher) HasUpdate() (time.Time, bool) {
 	if !f.isLocalFile {
 		backend.Logger.Debug("File watcher is not needed for non-local file (", "path=", f.path, ")")
-		return false
+		return time.Time{}, false
 	}
 
 	info, err := os.Stat(f.path)
 	if err != nil {
-		return false
+		return time.Time{}, false
 	}
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	backend.Logger.Debug("Checking file modification", "path", f.path, "lastModified", f.lastModified, "currentModified", info.ModTime())
 
-	if info.ModTime().After(f.lastModified) {
-		f.lastModified = info.ModTime()
-		return true
-	}
-
-	return false
+	return info.ModTime(), info.ModTime().After(f.lastModified)
 }
 
-// retry makes the next check report an update again, so a reload that failed is
-// tried once more instead of waiting for the file to change again.
-func (f *FileWatcher) retry() {
+func (f *FileWatcher) recordReload(modTime time.Time) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	f.lastModified = time.Time{}
+	f.lastModified = modTime
 }
 
 // SQLDataSourceWrapper
@@ -153,7 +160,7 @@ func (d *SQLDataSourceWrapper) QueryData(ctx context.Context, req *backend.Query
 // running while that happens.
 func (d *SQLDataSourceWrapper) reloadIfReplaced(ctx context.Context) error {
 	// Checked before locking, so unchanged files leave queries running concurrently.
-	if !d.fileWatcher.HasUpdate() {
+	if _, hasUpdate := d.fileWatcher.HasUpdate(); !hasUpdate {
 		return nil
 	}
 	backend.Logger.Debug("DuckDB file has been modified, reloading DataSource.")
@@ -161,14 +168,21 @@ func (d *SQLDataSourceWrapper) reloadIfReplaced(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// Checked again under the lock: concurrent queries all see the same
+	// replacement, and only the one that gets here first reloads it.
+	modTime, hasUpdate := d.fileWatcher.HasUpdate()
+	if !hasUpdate {
+		return nil
+	}
+
 	newSqlDs, err := d.SQLDatasource.NewDatasource(ctx, d.settings)
 	if err != nil {
-		// The old database is closed by now, so leaving it in place would serve
-		// errors until the file changed again. Reload on the next query instead.
-		d.fileWatcher.retry()
+		// Nothing is recorded, so the next query tries the reload again. The old
+		// database is closed by now, so queries error until one succeeds either way.
 		return err
 	}
 	d.SQLDatasource = newSqlDs.(*sqlds.SQLDatasource)
+	d.fileWatcher.recordReload(modTime)
 
 	return nil
 }
