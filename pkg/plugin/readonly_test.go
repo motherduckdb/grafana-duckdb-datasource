@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,14 +12,22 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
-func connectSettings(jsonData string) backend.DataSourceInstanceSettings {
-	return backend.DataSourceInstanceSettings{JSONData: []byte(jsonData)}
+// connectSettings marshals rather than interpolates, keeping Windows path
+// backslashes valid JSON.
+func connectSettings(t *testing.T, config map[string]any) backend.DataSourceInstanceSettings {
+	t.Helper()
+
+	jsonData, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backend.DataSourceInstanceSettings{JSONData: jsonData}
 }
 
 func seedFile(t *testing.T, path string) {
 	t.Helper()
 
-	db, err := (&DuckDBDriver{}).Connect(context.Background(), connectSettings(`{"path":"`+path+`"}`), nil)
+	db, err := (&DuckDBDriver{}).Connect(context.Background(), connectSettings(t, map[string]any{"path": path}), nil)
 	if err != nil {
 		t.Fatalf("seeding %q returned %v", path, err)
 	}
@@ -35,7 +44,7 @@ func TestReadOnlyFile(t *testing.T) {
 	seedFile(t, path)
 
 	db, err := (&DuckDBDriver{}).Connect(context.Background(),
-		connectSettings(`{"path":"`+path+`","readOnly":true}`), nil)
+		connectSettings(t, map[string]any{"path": path, "readOnly": true}), nil)
 	if err != nil {
 		t.Fatalf("Connect() returned %v", err)
 	}
@@ -74,7 +83,7 @@ func TestReadOnlyFile(t *testing.T) {
 func TestReadOnlyRejectsInMemory(t *testing.T) {
 	var db *sql.DB
 	db, err := (&DuckDBDriver{}).Connect(context.Background(),
-		connectSettings(`{"path":"","readOnly":true}`), nil)
+		connectSettings(t, map[string]any{"path": "", "readOnly": true}), nil)
 	if db != nil {
 		defer db.Close()
 	}
@@ -98,7 +107,7 @@ func TestReadOnlyMotherDuck(t *testing.T) {
 		t.Skip("motherduck_token is not set")
 	}
 
-	settings := connectSettings(`{"path":"md:sample_data","readOnly":true}`)
+	settings := connectSettings(t, map[string]any{"path": "md:sample_data", "readOnly": true})
 	settings.DecryptedSecureJSONData = map[string]string{"motherDuckToken": token}
 
 	db, err := (&DuckDBDriver{}).Connect(context.Background(), settings, nil)
