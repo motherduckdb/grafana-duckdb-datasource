@@ -75,6 +75,30 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 	return config, nil
 }
 
+// motherDuckConnected reports whether this database already has a MotherDuck
+// connection, so the setup is not repeated on later connections to it.
+func motherDuckConnected(execer driver.ExecerContext) (bool, error) {
+	queryer, ok := execer.(driver.QueryerContext)
+	if !ok {
+		return false, nil
+	}
+
+	// A table function, so it has to be selected from rather than called.
+	rows, err := queryer.QueryContext(context.Background(), "FROM md_is_connected();", nil)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	values := make([]driver.Value, 1)
+	if err := rows.Next(values); err != nil {
+		return false, err
+	}
+
+	connected, _ := values[0].(bool)
+	return connected, nil
+}
+
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
 	d.connectMu.Lock()
 	defer d.connectMu.Unlock()
@@ -122,48 +146,72 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
-		bootQueries := []string{}
-		if !d.Initialized {
-			// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
-			homePath := os.Getenv("GF_PATHS_DATA")
 
-			if homePath != "" {
-				bootQueries = append(bootQueries, "SET home_directory='"+homePath+"';")
-				extensionPath := filepath.Join(homePath, ".duckdb/extensions")
-				bootQueries = append(bootQueries, "SET extension_directory='"+extensionPath+"';")
-				secretsPath := filepath.Join(homePath, ".duckdb/stored_secrets")
-				bootQueries = append(bootQueries, "SET secret_directory='"+secretsPath+"';")
-			}
+		if d.Initialized {
+			return nil
+		}
 
-			// Handle MotherDuck setup and ATTACH
-			if strings.HasPrefix(cleanPath, "md:") {
-				// MotherDuck: install extension, set token, and ATTACH
-				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+		exec := func(query string) error {
+			// TODO: Fix context cancellation happening somewhere in the plugin.
+			_, err := execer.ExecContext(context.Background(), query, nil)
+			return err
+		}
 
-				// Quote the MotherDuck path for ATTACH
-				quotedDB := "'" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
-				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+quotedDB+" (TYPE motherduck);")
-				backend.Logger.Info("ATTACH IF NOT EXISTS " + quotedDB + " (TYPE motherduck);")
-			} else if config.Secrets.MotherDuckToken != "" {
-				// Token provided but not MotherDuck path: still install extension for potential use
-				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
+		homePath := os.Getenv("GF_PATHS_DATA")
+		if homePath != "" {
+			for _, query := range []string{
+				"SET home_directory='" + homePath + "';",
+				"SET extension_directory='" + filepath.Join(homePath, ".duckdb/extensions") + "';",
+				"SET secret_directory='" + filepath.Join(homePath, ".duckdb/stored_secrets") + "';",
+			} {
+				if err := exec(query); err != nil {
+					return err
+				}
 			}
-			// Run other user defined init queries.
-			if strings.TrimSpace(config.InitSql) != "" {
-				bootQueries = append(bootQueries, config.InitSql)
-			}
-			for _, query := range bootQueries {
-				// TODO: Fix context cancellation happening somewhere in the plugin.
-				_, err = execer.ExecContext(context.Background(), query, nil)
-				if err != nil {
+		}
+
+		if strings.HasPrefix(cleanPath, "md:") || config.Secrets.MotherDuckToken != "" {
+			for _, query := range []string{"INSTALL 'motherduck';", "LOAD 'motherduck';"} {
+				if err := exec(query); err != nil {
 					return err
 				}
 			}
 
-			d.Initialized = true
+			// The token is rejected once the database is connected, and the
+			// databases cannot be attached twice, so ask the database itself
+			// rather than assuming this is the first connection.
+			connected, err := motherDuckConnected(execer)
+			if err != nil {
+				return err
+			}
+
+			if !connected {
+				if err := exec("SET motherduck_token='" + config.Secrets.MotherDuckToken + "';"); err != nil {
+					return err
+				}
+
+				if strings.HasPrefix(cleanPath, "md:") {
+					// Run a bare ATTACH: adding IF NOT EXISTS attaches something
+					// that cannot be queried, and TYPE motherduck requires an
+					// alias, which a whole workspace cannot have.
+					attach := "ATTACH '" + strings.ReplaceAll(cleanPath, "'", "''") + "';"
+					backend.Logger.Info(attach)
+					if err := exec(attach); err != nil {
+						return err
+					}
+				}
+			}
 		}
+
+		// Run other user defined init queries.
+		if strings.TrimSpace(config.InitSql) != "" {
+			if err := exec(config.InitSql); err != nil {
+				return err
+			}
+		}
+
+		d.Initialized = true
 
 		return nil
 	})
