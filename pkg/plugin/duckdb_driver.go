@@ -119,6 +119,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		return nil, &ConfigError{"Invalid path: " + trimmedPath + " -> example input: md:sample_data"}
 	}
 
+	// DuckDB refuses to launch an in-memory database read-only, so saying which
+	// setting is wrong beats a bare "Cannot launch in-memory database".
+	if config.ReadOnly && trimmedPath == "" {
+		return nil, &ConfigError{"Read-only is not supported for an in-memory database, set a file path or a MotherDuck database"}
+	}
+
 	if strings.HasPrefix(cleanPath, "md:") {
 		// MotherDuck: use in-memory base and ATTACH later
 		if config.Secrets.MotherDuckToken == "" {
@@ -139,6 +145,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		sep = "&"
 	}
 	path += sep + "custom_user_agent=grafana"
+
+	// A MotherDuck database is attached onto an in-memory base, which cannot
+	// itself be read-only, so that case is handled on the ATTACH instead.
+	if config.ReadOnly && !strings.HasPrefix(cleanPath, "md:") {
+		path += "&access_mode=read_only"
+	}
 
 	d.closePrevious()
 
@@ -195,7 +207,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 					// Run a bare ATTACH: adding IF NOT EXISTS attaches something
 					// that cannot be queried, and TYPE motherduck requires an
 					// alias, which a whole workspace cannot have.
-					attach := "ATTACH '" + strings.ReplaceAll(cleanPath, "'", "''") + "';"
+					attach := "ATTACH '" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
+					if config.ReadOnly {
+						attach += " (READ_ONLY)"
+					}
+					attach += ";"
+
 					backend.Logger.Info(attach)
 					if err := exec(attach); err != nil {
 						return err
