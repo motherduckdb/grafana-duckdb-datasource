@@ -162,9 +162,9 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 				}
 
 				if strings.HasPrefix(cleanPath, "md:") {
-					// Neither IF NOT EXISTS nor TYPE motherduck: the first attaches
-					// something that cannot be queried, the second demands an alias
-					// that a whole workspace cannot have.
+					// Run a bare ATTACH: adding IF NOT EXISTS attaches something
+					// that cannot be queried, and TYPE motherduck requires an
+					// alias, which a whole workspace cannot have.
 					attach := "ATTACH '" + strings.ReplaceAll(cleanPath, "'", "''") + "';"
 					backend.Logger.Info(attach)
 					if err := exec(attach); err != nil {
