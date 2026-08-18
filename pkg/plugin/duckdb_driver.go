@@ -36,8 +36,33 @@ func (e *ConfigError) Error() string {
 }
 
 type DuckDBDriver struct {
+	// Serialises Connect end to end. Without it two callers can close and open
+	// on the same path at once, leaving two instances open and leaking one.
+	connectMu sync.Mutex
+
+	// Guards the fields below, and is taken by the connection callback too.
 	mu          sync.Mutex
 	Initialized bool
+	db          *sql.DB
+}
+
+// closePrevious releases the DuckDB instance opened by an earlier Connect.
+// Closing the pool also closes its connector, which is what lets a replaced
+// file be read: while an instance is open for a path, DuckDB returns that one.
+func (d *DuckDBDriver) closePrevious() {
+	d.mu.Lock()
+	previous := d.db
+	d.db = nil
+	d.Initialized = false
+	d.mu.Unlock()
+
+	// Closed outside the lock so connections opening on the new database, which
+	// take it in the connection callback, do not queue behind the teardown.
+	if previous != nil {
+		if err := previous.Close(); err != nil {
+			backend.Logger.Warn("Closing the previous DuckDB database failed: " + err.Error())
+		}
+	}
 }
 
 // parse config from settings.JSONData
@@ -75,6 +100,9 @@ func motherDuckConnected(execer driver.ExecerContext) (bool, error) {
 }
 
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
+	d.connectMu.Lock()
+	defer d.connectMu.Unlock()
+
 	config, err := models.LoadPluginSettings(settings)
 	if err != nil {
 		return nil, err
@@ -111,6 +139,8 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		sep = "&"
 	}
 	path += sep + "custom_user_agent=grafana"
+
+	d.closePrevious()
 
 	// connect with the path before any other queries are run.
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
@@ -197,6 +227,10 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		maxOpen = config.MaxOpenConns
 	}
 	db.SetMaxOpenConns(maxOpen)
+
+	d.mu.Lock()
+	d.db = db
+	d.mu.Unlock()
 
 	return db, nil
 }
