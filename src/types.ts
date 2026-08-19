@@ -26,6 +26,7 @@ export interface DuckDBDataSourceOptions extends SQLOptions {
   path?: string;
   initSql?: string;
   dataDir?: string;
+  readOnly?: boolean;
 }
 
 /**

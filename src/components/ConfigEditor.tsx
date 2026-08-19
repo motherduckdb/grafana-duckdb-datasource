@@ -1,5 +1,5 @@
 import React, { ChangeEvent } from 'react';
-import { InlineField, Input, SecretInput, TextArea } from '@grafana/ui';
+import { InlineField, InlineSwitch, Input, SecretInput, TextArea } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { DuckDBDataSourceOptions, SecureJsonData } from '../types';
 
@@ -35,6 +35,16 @@ export function ConfigEditor(props: Props) {
       jsonData: {
         ...jsonData,
         dataDir: event.target.value,
+      },
+    });
+  };
+
+  const onReadOnlyChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        readOnly: event.currentTarget.checked,
       },
     });
   };
@@ -102,6 +112,14 @@ export function ConfigEditor(props: Props) {
           value={jsonData.dataDir || ''}
           placeholder="/var/lib/grafana"
           width={40}
+        />
+      </InlineField>
+      <InlineField label="Read-only" labelWidth={20} interactive
+        tooltip={'Open the database without write access, so a DuckDB file keeps no write lock and other processes can still write to it. Not available for an in-memory database.'}>
+        <InlineSwitch
+          id="config-editor-read-only"
+          value={jsonData.readOnly ?? false}
+          onChange={onReadOnlyChange}
         />
       </InlineField>
       <InlineField label="Max Connections" labelWidth={20} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>

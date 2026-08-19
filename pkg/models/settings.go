@@ -12,6 +12,7 @@ type PluginSettings struct {
 	InitSql      string                `json:"initSql"`
 	MaxOpenConns int                   `json:"maxOpenConns"`
 	DataDir      string                `json:"dataDir"`
+	ReadOnly     bool                  `json:"readOnly"`
 	Secrets      *SecretPluginSettings `json:"-"`
 }
 

@@ -73,6 +73,15 @@ This mounts your local plugin directory into the container and configures Grafan
 | Path             | Path to DuckDB database file, if empty, connects to duckDB in in-memory mode.        | Yes      |
 | MotherDuck Token | Token for MotherDuck API access                       | No       |
 
+### Connecting to MotherDuck
+
+Set the path to the MotherDuck database you want to query, and supply a MotherDuck Token:
+
+| Path | Result |
+|------|--------|
+| `md:my_database` | queries that database, addressed as `my_database.schema.table` |
+| `md:` | attaches every database in your MotherDuck account |
+
 ### Query Editor Options
 
 The query editor supports standard SQL syntax and includes special Grafana macros for time range filtering and variable interpolation.
@@ -140,10 +149,6 @@ DuckDB's [concurrency support](https://duckdb.org/docs/connect/concurrency.html#
   - Write to other file formats, and read using DuckDB extensions. Note that this may be much less performant than directly querying the DuckDB file.
   - Host the database using MotherDuck, which allows writing to the database while querying it from Grafana and other clients at the same time.
 
-### Connecting to MotherDuck
-
-If you are running the official Grafana docker image, having a DuckDB data source pointing to `md:` or `md:...` will not work due to file system permissions issues. As a workaround, leave the db path field blank, and in the `initSQL` section, add `ATTACH IF NOT EXISTS 'md:';`.
-
 ### Grafana DuckDB Plugin is not compatible with Alpine based images.
 
 If you are starting out with the Grafana DuckDB plugin and are running into any of the following, double-check your base image:
@@ -152,6 +157,11 @@ If you are starting out with the Grafana DuckDB plugin and are running into any 
    * fork/exec ...: no such file or directory
 
 These symptoms all have the same cause: Alpine uses musl libc, not glibc. The go-duckdb binary is compiled against glibc and cannot run on musl. The "no such file or directory" error is particularly confusing because the file exists - it's the dynamic linker (/lib/ld-linux-*.so) that's missing.
+
+
+## Build, test and release process
+
+How the plugin is built and tested in CI, and how a release is cut, is documented in [CONTRIBUTING.md](./CONTRIBUTING.md#build-test-and-release-process).
 
 
 ## Links

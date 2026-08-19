@@ -37,8 +37,33 @@ func (e *ConfigError) Error() string {
 }
 
 type DuckDBDriver struct {
+	// Serialises Connect end to end. Without it two callers can close and open
+	// on the same path at once, leaving two instances open and leaking one.
+	connectMu sync.Mutex
+
+	// Guards the fields below, and is taken by the connection callback too.
 	mu          sync.Mutex
 	Initialized bool
+	db          *sql.DB
+}
+
+// closePrevious releases the DuckDB instance opened by an earlier Connect.
+// Closing the pool also closes its connector, which is what lets a replaced
+// file be read: while an instance is open for a path, DuckDB returns that one.
+func (d *DuckDBDriver) closePrevious() {
+	d.mu.Lock()
+	previous := d.db
+	d.db = nil
+	d.Initialized = false
+	d.mu.Unlock()
+
+	// Closed outside the lock so connections opening on the new database, which
+	// take it in the connection callback, do not queue behind the teardown.
+	if previous != nil {
+		if err := previous.Close(); err != nil {
+			backend.Logger.Warn("Closing the previous DuckDB database failed: " + err.Error())
+		}
+	}
 }
 
 // parse config from settings.JSONData
@@ -98,7 +123,34 @@ func claimDataDir(dir string) error {
 	return os.MkdirAll(duckDir, 0o755)
 }
 
+// motherDuckConnected reports whether this database already has a MotherDuck
+// connection, so the setup is not repeated on later connections to it.
+func motherDuckConnected(execer driver.ExecerContext) (bool, error) {
+	queryer, ok := execer.(driver.QueryerContext)
+	if !ok {
+		return false, nil
+	}
+
+	// A table function, so it has to be selected from rather than called.
+	rows, err := queryer.QueryContext(context.Background(), "FROM md_is_connected();", nil)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	values := make([]driver.Value, 1)
+	if err := rows.Next(values); err != nil {
+		return false, err
+	}
+
+	connected, _ := values[0].(bool)
+	return connected, nil
+}
+
 func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceInstanceSettings, msg json.RawMessage) (*sql.DB, error) {
+	d.connectMu.Lock()
+	defer d.connectMu.Unlock()
+
 	config, err := models.LoadPluginSettings(settings)
 	if err != nil {
 		return nil, err
@@ -113,6 +165,12 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	if (strings.HasPrefix(trimmedPath, "'") && strings.HasSuffix(trimmedPath, "'")) ||
 		(strings.HasPrefix(trimmedPath, "\"") && strings.HasSuffix(trimmedPath, "\"")) {
 		return nil, &ConfigError{"Invalid path: " + trimmedPath + " -> example input: md:sample_data"}
+	}
+
+	// DuckDB refuses to launch an in-memory database read-only, so saying which
+	// setting is wrong beats a bare "Cannot launch in-memory database".
+	if config.ReadOnly && trimmedPath == "" {
+		return nil, &ConfigError{"Read-only is not supported for an in-memory database, set a file path or a MotherDuck database"}
 	}
 
 	if strings.HasPrefix(cleanPath, "md:") {
@@ -147,51 +205,81 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		backend.Logger.Warn("No writable directory found for DuckDB extensions and secrets, using DuckDB defaults")
 	}
 
+	// A MotherDuck database is attached onto an in-memory base, which cannot
+	// itself be read-only, so that case is handled on the ATTACH instead.
+	if config.ReadOnly && !strings.HasPrefix(cleanPath, "md:") {
+		options.Set("access_mode", "read_only")
+	}
+
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&"
 	}
 	path += sep + options.Encode()
 
+	d.closePrevious()
+
 	// connect with the path before any other queries are run.
 	connector, err := duckdb.NewConnector(path, func(execer driver.ExecerContext) error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 
-		if !d.Initialized {
-			bootQueries := []string{}
+		if d.Initialized {
+			return nil
+		}
 
-			// Handle MotherDuck setup and ATTACH
-			if strings.HasPrefix(cleanPath, "md:") {
-				// MotherDuck: install extension, set token, and ATTACH
-				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
+		exec := func(query string) error {
+			// TODO: Fix context cancellation happening somewhere in the plugin.
+			_, err := execer.ExecContext(context.Background(), query, nil)
+			return err
+		}
 
-				// Quote the MotherDuck path for ATTACH
-				quotedDB := "'" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
-				bootQueries = append(bootQueries, "ATTACH IF NOT EXISTS "+quotedDB+" (TYPE motherduck);")
-				backend.Logger.Info("ATTACH IF NOT EXISTS " + quotedDB + " (TYPE motherduck);")
-			} else if config.Secrets.MotherDuckToken != "" {
-				// Token provided but not MotherDuck path: still install extension for potential use
-				bootQueries = append(bootQueries, "INSTALL 'motherduck';", "LOAD 'motherduck';")
-				bootQueries = append(bootQueries, "SET motherduck_token='"+config.Secrets.MotherDuckToken+"';")
-			}
-			// Run other user defined init queries.
-			if strings.TrimSpace(config.InitSql) != "" {
-				bootQueries = append(bootQueries, config.InitSql)
-			}
-
-			for _, query := range bootQueries {
-				// TODO: Fix context cancellation happening somewhere in the plugin.
-				// Left unset on failure, so the next connection retries the setup
-				// instead of quietly connecting to an unconfigured database.
-				if _, err := execer.ExecContext(context.Background(), query, nil); err != nil {
+		if strings.HasPrefix(cleanPath, "md:") || config.Secrets.MotherDuckToken != "" {
+			for _, query := range []string{"INSTALL 'motherduck';", "LOAD 'motherduck';"} {
+				if err := exec(query); err != nil {
 					return err
 				}
 			}
 
-			d.Initialized = true
+			// The token is rejected once the database is connected, and the
+			// databases cannot be attached twice, so ask the database itself
+			// rather than assuming this is the first connection.
+			connected, err := motherDuckConnected(execer)
+			if err != nil {
+				return err
+			}
+
+			if !connected {
+				if err := exec("SET motherduck_token='" + config.Secrets.MotherDuckToken + "';"); err != nil {
+					return err
+				}
+
+				if strings.HasPrefix(cleanPath, "md:") {
+					// Run a bare ATTACH: adding IF NOT EXISTS attaches something
+					// that cannot be queried, and TYPE motherduck requires an
+					// alias, which a whole workspace cannot have.
+					attach := "ATTACH '" + strings.ReplaceAll(cleanPath, "'", "''") + "'"
+					if config.ReadOnly {
+						attach += " (READ_ONLY)"
+					}
+					attach += ";"
+
+					backend.Logger.Info(attach)
+					if err := exec(attach); err != nil {
+						return err
+					}
+				}
+			}
 		}
+
+		// Run other user defined init queries.
+		if strings.TrimSpace(config.InitSql) != "" {
+			if err := exec(config.InitSql); err != nil {
+				return err
+			}
+		}
+
+		d.Initialized = true
 
 		return nil
 	})
@@ -207,6 +295,10 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		maxOpen = config.MaxOpenConns
 	}
 	db.SetMaxOpenConns(maxOpen)
+
+	d.mu.Lock()
+	d.db = db
+	d.mu.Unlock()
 
 	return db, nil
 }
