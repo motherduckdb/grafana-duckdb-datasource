@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -75,6 +76,53 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 	return config, nil
 }
 
+// Grafana 12.4 stopped forwarding its environment to plugin processes, so
+// neither GF_PATHS_DATA nor HOME can be relied on to find a writable directory.
+func duckDBDataDir(ctx context.Context, configured string) (string, error) {
+	if configured != "" {
+		if err := claimDataDir(configured); err != nil {
+			return "", &ConfigError{"Data directory " + configured + " is not writable: " + err.Error()}
+		}
+		return configured, nil
+	}
+
+	candidates := []string{os.Getenv("GF_PATHS_DATA")}
+	if cfg := backend.GrafanaConfigFromContext(ctx); cfg != nil {
+		candidates = append(candidates, cfg.Get("GF_PATHS_DATA"))
+	}
+	if executable, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Dir(executable))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, home)
+	}
+	candidates = append(candidates, os.TempDir())
+
+	for _, dir := range candidates {
+		if dir == "" || dir == "/" {
+			continue
+		}
+		if err := claimDataDir(dir); err == nil {
+			return dir, nil
+		}
+	}
+
+	// Leave DuckDB to its own defaults rather than failing a data source that
+	// may never install an extension or store a secret.
+	return "", nil
+}
+
+// claimDataDir reports whether dir can hold DuckDB's directories. One that is
+// already set up is accepted as is, so a read-only directory holding
+// preinstalled extensions still wins over an empty writable one.
+func claimDataDir(dir string) error {
+	duckDir := filepath.Join(dir, ".duckdb")
+	if info, err := os.Stat(duckDir); err == nil && info.IsDir() {
+		return nil
+	}
+	return os.MkdirAll(duckDir, 0o755)
+}
+
 // motherDuckConnected reports whether this database already has a MotherDuck
 // connection, so the setup is not repeated on later connections to it.
 func motherDuckConnected(execer driver.ExecerContext) (bool, error) {
@@ -139,18 +187,35 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		// Empty: in-memory database
 		path = ""
 	}
-	// Set custom_user_agent via DSN parameter (must be set at connection open time)
-	sep := "?"
-	if strings.Contains(path, "?") {
-		sep = "&"
+	dataDir, err := duckDBDataDir(ctx, strings.TrimSpace(config.DataDir))
+	if err != nil {
+		return nil, err
 	}
-	path += sep + "custom_user_agent=grafana"
+	options := url.Values{}
+	options.Set("custom_user_agent", "grafana")
+
+	// These must be set when the database is opened. Setting them per connection
+	// leaves extension autoloading resolving a home directory of its own.
+	if dataDir != "" {
+		backend.Logger.Info("DuckDB extensions and secrets directory is: " + dataDir)
+		options.Set("home_directory", dataDir)
+		options.Set("extension_directory", filepath.Join(dataDir, ".duckdb/extensions"))
+		options.Set("secret_directory", filepath.Join(dataDir, ".duckdb/stored_secrets"))
+	} else {
+		backend.Logger.Warn("No writable directory found for DuckDB extensions and secrets, using DuckDB defaults")
+	}
 
 	// A MotherDuck database is attached onto an in-memory base, which cannot
 	// itself be read-only, so that case is handled on the ATTACH instead.
 	if config.ReadOnly && !strings.HasPrefix(cleanPath, "md:") {
-		path += "&access_mode=read_only"
+		options.Set("access_mode", "read_only")
 	}
+
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	path += sep + options.Encode()
 
 	d.closePrevious()
 
@@ -167,20 +232,6 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 			// TODO: Fix context cancellation happening somewhere in the plugin.
 			_, err := execer.ExecContext(context.Background(), query, nil)
 			return err
-		}
-
-		// read env variable GF_PATHS_DATA and use it as the home directory for extension installation.
-		homePath := os.Getenv("GF_PATHS_DATA")
-		if homePath != "" {
-			for _, query := range []string{
-				"SET home_directory='" + homePath + "';",
-				"SET extension_directory='" + filepath.Join(homePath, ".duckdb/extensions") + "';",
-				"SET secret_directory='" + filepath.Join(homePath, ".duckdb/stored_secrets") + "';",
-			} {
-				if err := exec(query); err != nil {
-					return err
-				}
-			}
 		}
 
 		if strings.HasPrefix(cleanPath, "md:") || config.Secrets.MotherDuckToken != "" {
