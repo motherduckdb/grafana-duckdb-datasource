@@ -7,7 +7,18 @@
 set -euo pipefail
 
 dist=${1:-dist}
-max=${2:-2.35}
+
+# The ceiling is read from the README so this gate and the promise cannot
+# drift apart. The promise itself comes from the oldest supported Grafana
+# (grafanaDependency in plugin.json): its -ubuntu image is Ubuntu 22.04,
+# which ships glibc 2.35. To raise it, raise the README promise when that
+# Grafana moves to a newer Ubuntu base.
+max=${2:-$(grep -oEm1 'glibc [0-9]+\.[0-9]+ or later' README.md | grep -oE '[0-9]+\.[0-9]+')}
+if [ -z "$max" ]; then
+  echo "FAIL  could not find the promised 'glibc X.Y or later' line in README.md"
+  exit 1
+fi
+
 status=0
 
 for binary in "$dist"/gpx_duckdb_datasource_linux_*; do
