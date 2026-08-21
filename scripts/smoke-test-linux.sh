@@ -19,6 +19,7 @@ status=0
 for binary in "$dist"/gpx_duckdb_datasource_linux_*; do
   [ -f "$binary" ] || continue
   arch=${binary##*_}
+  chmod +x "$binary" # CI artifact downloads drop the exec bit
   output=$(docker run --rm --platform "linux/$arch" \
              -v "$(cd "$dist" && pwd)":/plugin:ro \
              --entrypoint "/plugin/$(basename "$binary")" "$image" 2>&1 || true)
@@ -26,7 +27,7 @@ for binary in "$dist"/gpx_duckdb_datasource_linux_*; do
     echo "ok    $(basename "$binary") runs on $image"
   else
     echo "FAIL  $(basename "$binary") does not run on $image:"
-    echo "$output" | head -5 | sed 's/^/      /'
+    echo "$output" | tail -5 | sed 's/^/      /'
     status=1
   fi
 done
