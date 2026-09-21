@@ -105,7 +105,7 @@ export function ConfigEditor(props: Props) {
           />
       </InlineField>
       <InlineField label="Data directory" labelWidth={20} interactive
-        tooltip={'Directory for DuckDB extensions and secrets. Leave blank to use the Grafana data directory, falling back to the plugin directory.'}>
+        tooltip={'Directory DuckDB installs extensions and stores secrets under. Leave blank to use the Grafana data directory, which Grafana 12.4 and later no longer pass on to plugins.'}>
         <Input
           id="config-editor-data-dir"
           onChange={onDataDirChange}

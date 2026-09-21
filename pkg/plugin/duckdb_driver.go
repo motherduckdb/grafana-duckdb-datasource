@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/url"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -74,53 +73,6 @@ func parseConfig(settings backend.DataSourceInstanceSettings) (map[string]string
 		return nil, err
 	}
 	return config, nil
-}
-
-// Grafana 12.4 stopped forwarding its environment to plugin processes, so
-// neither GF_PATHS_DATA nor HOME can be relied on to find a writable directory.
-func duckDBDataDir(ctx context.Context, configured string) (string, error) {
-	if configured != "" {
-		if err := claimDataDir(configured); err != nil {
-			return "", &ConfigError{"Data directory " + configured + " is not writable: " + err.Error()}
-		}
-		return configured, nil
-	}
-
-	candidates := []string{os.Getenv("GF_PATHS_DATA")}
-	if cfg := backend.GrafanaConfigFromContext(ctx); cfg != nil {
-		candidates = append(candidates, cfg.Get("GF_PATHS_DATA"))
-	}
-	if executable, err := os.Executable(); err == nil {
-		candidates = append(candidates, filepath.Dir(executable))
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, home)
-	}
-	candidates = append(candidates, os.TempDir())
-
-	for _, dir := range candidates {
-		if dir == "" || dir == "/" {
-			continue
-		}
-		if err := claimDataDir(dir); err == nil {
-			return dir, nil
-		}
-	}
-
-	// Leave DuckDB to its own defaults rather than failing a data source that
-	// may never install an extension or store a secret.
-	return "", nil
-}
-
-// claimDataDir reports whether dir can hold DuckDB's directories. One that is
-// already set up is accepted as is, so a read-only directory holding
-// preinstalled extensions still wins over an empty writable one.
-func claimDataDir(dir string) error {
-	duckDir := filepath.Join(dir, ".duckdb")
-	if info, err := os.Stat(duckDir); err == nil && info.IsDir() {
-		return nil
-	}
-	return os.MkdirAll(duckDir, 0o755)
 }
 
 // motherDuckConnected reports whether this database already has a MotherDuck
@@ -187,22 +139,21 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 		// Empty: in-memory database
 		path = ""
 	}
-	dataDir, err := duckDBDataDir(ctx, strings.TrimSpace(config.DataDir))
-	if err != nil {
-		return nil, err
-	}
 	options := url.Values{}
 	options.Set("custom_user_agent", "grafana")
 
-	// These must be set when the database is opened. Setting them per connection
-	// leaves extension autoloading resolving a home directory of its own.
-	if dataDir != "" {
-		backend.Logger.Info("DuckDB extensions and secrets directory is: " + dataDir)
-		options.Set("home_directory", dataDir)
-		options.Set("extension_directory", filepath.Join(dataDir, ".duckdb/extensions"))
-		options.Set("secret_directory", filepath.Join(dataDir, ".duckdb/stored_secrets"))
-	} else {
-		backend.Logger.Warn("No writable directory found for DuckDB extensions and secrets, using DuckDB defaults")
+	// DuckDB places its extensions and secrets under the home directory, and
+	// resolves it when the database is opened, so this cannot be a SET: one
+	// arrives too late for extension autoloading. Grafana 12.4 stopped
+	// forwarding its environment to plugin processes, leaving GF_PATHS_DATA
+	// unset, which is why the directory can also be configured on the data source.
+	homeDir := strings.TrimSpace(config.DataDir)
+	if homeDir == "" {
+		homeDir = os.Getenv("GF_PATHS_DATA")
+	}
+	if homeDir != "" {
+		backend.Logger.Info("DuckDB home directory is: " + homeDir)
+		options.Set("home_directory", homeDir)
 	}
 
 	// A MotherDuck database is attached onto an in-memory base, which cannot
