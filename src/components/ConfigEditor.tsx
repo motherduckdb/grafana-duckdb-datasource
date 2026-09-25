@@ -29,6 +29,16 @@ export function ConfigEditor(props: Props) {
     });
   };
 
+  const onDataDirChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        ...jsonData,
+        dataDir: event.target.value,
+      },
+    });
+  };
+
   const onReadOnlyChange = (event: ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
       ...options,
@@ -93,6 +103,16 @@ export function ConfigEditor(props: Props) {
               width={60}
               rows={5}
           />
+      </InlineField>
+      <InlineField label="Data directory" labelWidth={20} interactive
+        tooltip={'Directory DuckDB installs extensions and stores secrets under. Leave blank to use the Grafana data directory, which Grafana 12.4 and later no longer pass on to plugins.'}>
+        <Input
+          id="config-editor-data-dir"
+          onChange={onDataDirChange}
+          value={jsonData.dataDir || ''}
+          placeholder="/var/lib/grafana"
+          width={40}
+        />
       </InlineField>
       <InlineField label="Read-only" labelWidth={20} interactive
         tooltip={'Open the database without write access, so a DuckDB file keeps no write lock and other processes can still write to it. Not available for an in-memory database.'}>
