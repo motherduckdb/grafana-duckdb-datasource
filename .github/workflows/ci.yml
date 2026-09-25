@@ -186,6 +186,14 @@ jobs:
           mkdir -p dist
           cp -r all-artifacts/*/gpx_duckdb_datasource* dist/
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - name: Smoke-run binaries in the oldest supported Grafana image
+        run: ./scripts/smoke-test-linux.sh dist
+
       - uses: magefile/mage-action@v3
         with:
           version: latest
