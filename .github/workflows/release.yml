@@ -17,7 +17,6 @@ permissions:
   actions: read
 
 env:
-  GH_TOKEN: ${{ github.token }}
   GH_REPO: ${{ github.repository }}
   RELEASE_REF: ${{ inputs.sha }}
 
@@ -26,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Resolve commit and successful CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           SHA=$(gh api "repos/$GH_REPO/commits/$RELEASE_REF" --jq .sha)
           RUN_ID=$(gh run list \
@@ -52,6 +53,8 @@ jobs:
           ref: ${{ env.SHA }}
 
       - name: Validate version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(jq -r .version package.json)
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
@@ -69,6 +72,8 @@ jobs:
           echo "TAG=$TAG" >> "$GITHUB_ENV"
 
       - name: Download artifact from successful CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "$RUN_ID" \
             --repo "$GH_REPO" \
@@ -85,6 +90,8 @@ jobs:
           echo "ZIP_FILE=${ZIP_FILES[0]}" >> "$GITHUB_ENV"
 
       - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ARGS=(
             "$TAG"
