@@ -106,17 +106,23 @@ The `generate-manifest` job collects all five binaries into a single `dist/` and
 
 ### Releasing
 
-A release is triggered by bumping `version` in `package.json` on `main` — there is no tag to push. `src/plugin.json` carries `"version": "%VERSION%"`, substituted from `package.json` at build time, so `package.json` is the single source of truth for the plugin version.
+A release is cut manually with the **Release** workflow. Do not create a tag or release directly from the GitHub Releases page. `src/plugin.json` carries `"version": "%VERSION%"`, substituted from `package.json` at build time, so `package.json` is the single source of truth for the plugin version.
 
-The `check-version-bump` job diffs `package.json` against the previous commit. If the version changed and the ref is `main`, the `deploy` job calls `.github/workflows/release.yml`, which downloads the packaged zip from the same CI run and opens a **draft** GitHub release with generated notes.
+The workflow accepts a commit SHA, defaulting to the latest commit on `main`. It requires that exact commit to have a successful `main` CI run, reads its version from `package.json`, downloads the packaged plugin from that run, and publishes a GitHub release with tag `v<version>` and generated notes. A version suffix such as `-rc1` creates a pre-release.
 
-Publishing that draft is manual. This is also where the release title gains its DuckDB version, as in `v0.4.5 + duckdb v1.5.4`.
+The optional `dry_run` input performs every validation and downloads the artifact without creating the tag or release. The workflow fails if the selected commit has no successful `main` build, its artifact is unavailable, or its version tag already exists.
 
 To cut a release:
 
-1. Merge a pull request bumping `version` in `package.json`.
+1. Merge a pull request that sets the desired version in `package.json`.
 2. Wait for CI to go green across all five platform builds and the Playwright matrix.
-3. Open the draft release, edit the title to include the DuckDB version, and publish.
+3. Open **Actions → Release → Run workflow**, select the commit to release (or leave `main`), and run it. Use `dry_run` first when validating a release.
+
+The same workflow can be started with the GitHub CLI:
+
+```bash
+gh workflow run release.yml -f sha=<commit>
+```
 
 ### Bumping DuckDB
 

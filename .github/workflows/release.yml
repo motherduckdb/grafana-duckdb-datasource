@@ -1,58 +1,114 @@
-# This GitHub Action automates the process of building Grafana plugins.
-# (For more information, see https://github.com/grafana/plugin-actions/blob/main/build-plugin/README.md)
 name: Release
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
-      version:
-        description: 'Version name (e.g., v1.0.0)'
-        required: true
+      sha:
+        description: Commit on main to release (defaults to the latest)
+        default: main
         type: string
+      dry_run:
+        description: Validate and download the artifact without creating a release
+        type: boolean
+        default: false
 
 permissions:
   contents: write
   actions: read
 
+env:
+  GH_REPO: ${{ github.repository }}
+  RELEASE_REF: ${{ inputs.sha }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ inputs.version }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download artifact from CI
+      - name: Resolve commit and successful CI run
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          SHA=$(gh api "repos/$GH_REPO/commits/$RELEASE_REF" --jq .sha)
           RUN_ID=$(gh run list \
-            --repo ${{ github.repository }} \
+            --repo "$GH_REPO" \
             --workflow ci.yml \
-            --limit 20 \
-            --json status,databaseId,headBranch \
-            --jq '[.[] | select(.headBranch == "main" and .status == "in_progress")][0].databaseId')
+            --branch main \
+            --event push \
+            --commit "$SHA" \
+            --status success \
+            --json databaseId \
+            --jq '.[0].databaseId')
 
-          echo "Downloading artifacts from CI run: $RUN_ID"
+          if [[ -z "$RUN_ID" ]]; then
+            echo "::error::No successful main CI run found for $SHA"
+            exit 1
+          fi
+
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Validate version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid package version '$VERSION'"
+            exit 1
+          fi
+
+          TAG="v$VERSION"
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" --silent 2>/dev/null; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Download artifact from successful CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           gh run download "$RUN_ID" \
-            --repo ${{ github.repository }} \
+            --repo "$GH_REPO" \
             --pattern 'motherduck-duckdb-datasource-*' \
             --dir artifact
 
-          echo "Downloaded files:"
-          find artifact -type f
+          mapfile -t ZIP_FILES < <(find artifact -type f -name "motherduck-duckdb-datasource-$VERSION.zip")
+          if [[ "${#ZIP_FILES[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one release archive, found ${#ZIP_FILES[@]}"
+            find artifact -type f -print
+            exit 1
+          fi
 
-      - name: Create draft release and upload artifacts
+          echo "ZIP_FILE=${ZIP_FILES[0]}" >> "$GITHUB_ENV"
+
+      - name: Create release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ZIP_FILE=$(find artifact -name "*.zip" | head -1)
-          echo "Uploading: $ZIP_FILE"
-
-          gh release create "$VERSION" \
-            --draft \
-            --generate-notes \
-            --title "$VERSION" \
-            -R ${{ github.repository }} \
+          ARGS=(
+            "$TAG"
             "$ZIP_FILE"
+            --repo "$GH_REPO"
+            --target "$SHA"
+            --title "$TAG"
+            --generate-notes
+          )
+          if [[ "$VERSION" == *-* ]]; then
+            ARGS+=(--prerelease)
+          fi
+
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            printf '[dry run] gh release create'
+            printf ' %q' "${ARGS[@]}"
+            printf '\n'
+          else
+            gh release create "${ARGS[@]}"
+          fi
