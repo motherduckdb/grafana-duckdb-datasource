@@ -8,12 +8,12 @@ import (
 )
 
 type PluginSettings struct {
-	Path         string                `json:"path"`
-	InitSql      string                `json:"initSql"`
-	MaxOpenConns int                   `json:"maxOpenConns"`
-	DataDir      string                `json:"dataDir"`
-	ReadOnly     bool                  `json:"readOnly"`
-	Secrets      *SecretPluginSettings `json:"-"`
+	Path          string                `json:"path"`
+	InitSql       string                `json:"initSql"`
+	MaxOpenConns  int                   `json:"maxOpenConns"`
+	HomeDirectory string                `json:"homeDirectory"`
+	ReadOnly      bool                  `json:"readOnly"`
+	Secrets       *SecretPluginSettings `json:"-"`
 }
 
 type SecretPluginSettings struct {

@@ -23,11 +23,11 @@ func homeDirectory(t *testing.T, config map[string]any) string {
 	return dir
 }
 
-func TestDataDirIsTheHomeDirectory(t *testing.T) {
+func TestConfiguredHomeDirectoryIsUsed(t *testing.T) {
 	configured := t.TempDir()
 	t.Setenv("GF_PATHS_DATA", t.TempDir())
 
-	if dir := homeDirectory(t, map[string]any{"dataDir": configured}); dir != configured {
+	if dir := homeDirectory(t, map[string]any{"homeDirectory": configured}); dir != configured {
 		t.Errorf("home_directory = %q, want the configured %q", dir, configured)
 	}
 }

@@ -29,12 +29,12 @@ export function ConfigEditor(props: Props) {
     });
   };
 
-  const onDataDirChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const onHomeDirectoryChange = (event: ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
       ...options,
       jsonData: {
         ...jsonData,
-        dataDir: event.target.value,
+        homeDirectory: event.target.value,
       },
     });
   };
@@ -84,7 +84,7 @@ export function ConfigEditor(props: Props) {
 
   return (
     <>
-      <InlineField label="Database name" labelWidth={20} interactive tooltip={'path to DuckDB file or MotherDuck database string or leave blank to use in-memory database'}>
+      <InlineField label="Database name" labelWidth={24} interactive tooltip={'path to DuckDB file or MotherDuck database string or leave blank to use in-memory database'}>
         <Input
           id="config-editor-path"
           onChange={onPathChange}
@@ -93,7 +93,7 @@ export function ConfigEditor(props: Props) {
           width={40}
         />
       </InlineField>
-      <InlineField label="Init SQL" labelWidth={20} interactive
+      <InlineField label="Init SQL" labelWidth={24} interactive
                      tooltip={'(Optional) SQL to run when connection is established'}>
           <TextArea
               id="config-editor-init-sql"
@@ -104,17 +104,17 @@ export function ConfigEditor(props: Props) {
               rows={5}
           />
       </InlineField>
-      <InlineField label="Data directory" labelWidth={20} interactive
+      <InlineField label="DuckDB home directory" labelWidth={24} interactive
         tooltip={'Directory DuckDB installs extensions and stores secrets under. Leave blank to use the Grafana data directory, which Grafana 12.4 and later no longer pass on to plugins.'}>
         <Input
-          id="config-editor-data-dir"
-          onChange={onDataDirChange}
-          value={jsonData.dataDir || ''}
+          id="config-editor-home-directory"
+          onChange={onHomeDirectoryChange}
+          value={jsonData.homeDirectory || ''}
           placeholder="/var/lib/grafana"
           width={40}
         />
       </InlineField>
-      <InlineField label="Read-only" labelWidth={20} interactive
+      <InlineField label="Read-only" labelWidth={24} interactive
         tooltip={'Open the database without write access, so a DuckDB file keeps no write lock and other processes can still write to it. Not available for an in-memory database.'}>
         <InlineSwitch
           id="config-editor-read-only"
@@ -122,7 +122,7 @@ export function ConfigEditor(props: Props) {
           onChange={onReadOnlyChange}
         />
       </InlineField>
-      <InlineField label="Max Connections" labelWidth={20} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>
+      <InlineField label="Max Connections" labelWidth={24} interactive tooltip={'Maximum number of concurrent database connections (default: 25).'}>
         <Input
           id="config-editor-max-open-conns"
           type="number"
@@ -132,7 +132,7 @@ export function ConfigEditor(props: Props) {
           width={40}
         />
       </InlineField>
-      <InlineField label="MotherDuck Token" labelWidth={20} interactive tooltip={'MotherDuck Token'}>
+      <InlineField label="MotherDuck Token" labelWidth={24} interactive tooltip={'MotherDuck Token'}>
         <SecretInput
           required
           id="config-editor-md-token"

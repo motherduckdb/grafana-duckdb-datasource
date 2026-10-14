@@ -147,7 +147,7 @@ func (d *DuckDBDriver) Connect(ctx context.Context, settings backend.DataSourceI
 	// arrives too late for extension autoloading. Grafana 12.4 stopped
 	// forwarding its environment to plugin processes, leaving GF_PATHS_DATA
 	// unset, which is why the directory can also be configured on the data source.
-	homeDir := strings.TrimSpace(config.DataDir)
+	homeDir := strings.TrimSpace(config.HomeDirectory)
 	if homeDir == "" {
 		homeDir = os.Getenv("GF_PATHS_DATA")
 	}
