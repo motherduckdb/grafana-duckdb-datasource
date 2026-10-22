@@ -1,7 +1,7 @@
 # Set VERSION to run against a published release instead of a local build,
 # e.g. `make dev VERSION=v0.4.5`.
 VERSION ?=
-GO_IMAGE ?= golang:1.24-bookworm
+GO_IMAGE ?= golang:1.25-bookworm
 
 .PHONY: dev dist test test-local clean
 
