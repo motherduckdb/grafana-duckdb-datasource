@@ -52,13 +52,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+      # mage-action's cache key has no arch, so a cached arm64 binary gets served to linux-amd64 (and vice versa)
       - uses: magefile/mage-action@v3
         with:
           version: latest
+          cache-binary: false
           args: coverage
       - uses: magefile/mage-action@v3
         with:
           version: latest
+          cache-binary: false
           args: -v build:LinuxARM64
       - name: Upload Linux ARM64 artifact
         uses: actions/upload-artifact@v4
