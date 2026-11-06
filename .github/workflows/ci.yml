@@ -44,54 +44,25 @@ jobs:
 
 
   build-linux-arm64:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+      - uses: actions/setup-go@v5
         with:
-          platforms: linux/arm64
-
-      - name: Create temporary Dockerfile
-        run: |
-          cat > Dockerfile << 'EOF'
-          FROM arm64v8/golang:1.25-bookworm
-
-          RUN go install github.com/magefile/mage@latest
-          RUN mage -init
-
-          RUN apt-get update && apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu
-        
-          RUN rm -rf /var/lib/apt/lists/*
-
-          # Address Issue: error obtaining VCS status: exit status 128
-          #   Use -buildvcs=false to disable VCS stamping.
-          ENV GOFLAGS=-buildvcs=false  
-
-          WORKDIR /repo
-
-          EOF
-
-      - name: Build and run Container
-        shell: sh
-
-        run: |
-          cat > run.sh << 'EOF'
-          #!/bin/sh
-          mage coverage
-          mage -v build:LinuxARM64
-          EOF
-
-          cat run.sh
-          chmod +x run.sh
-          docker build --platform linux/arm64  -t go-arm64 .
-          docker run --platform linux/arm64 -v `pwd`:/repo --name go-arm64 go-arm64 ./run.sh
-
+          go-version: '1.25'
+      # mage-action's cache key has no arch, so a cached arm64 binary gets served to linux-amd64 (and vice versa)
+      - uses: magefile/mage-action@v3
+        with:
+          version: latest
+          cache-binary: false
+          args: coverage
+      - uses: magefile/mage-action@v3
+        with:
+          version: latest
+          cache-binary: false
+          args: -v build:LinuxARM64
       - name: Upload Linux ARM64 artifact
         uses: actions/upload-artifact@v4
         with:
